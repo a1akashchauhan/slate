@@ -1,0 +1,1405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Slate turns any lecture, chapter or video into a guided worksheet you solve by hand, with a solutions copy to check yourself.">
+<meta property="og:title" content="Slate · make it stick">
+<meta property="og:description" content="Turn any lecture, chapter or video into a worksheet you solve by hand.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg transform='rotate(-6 20 20)'%3E%3Crect x='3' y='6' width='34' height='28' rx='4' fill='%23C98B62'/%3E%3Crect x='6.5' y='9.5' width='27' height='21' rx='2' fill='%232E3B4E'/%3E%3Cpath d='M12 21l4.5 4.5L28 14' fill='none' stroke='%23F4F7FB' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Slate · make it stick</title>
+
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&family=Caveat:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+  svg: { fontCache: 'none' },
+  startup: { typeset: false }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: Newton-style light UI (white ground, blue primary, teal + sky accents) matching Teach to AI.
+   Hero with an animated sticky-note mascot, three steps, then the builder card beside the paper worksheet.
+   Deliberately single light theme to match the brand; the worksheet itself is always paper. */
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF; --surface:#F5F7FA; --field:#FFFFFF; --line:#E4E8EE; --ink:#0B1B33; --muted:#5E6B7E;
+  --accent:#0673F9; --accent-hover:#0562D6; --accent-ink:#FFFFFF; --accent-soft:#E8F1FF;
+  --sky:#709DE6; --teal:#48E1C7; --teal-soft:#E3FAF5; --teal-ink:#0B6B5B;
+  --warn-soft:#FFF3DC; --danger:#D6383B;
+  --note:#FFE27A; --note-shade:#F5C842; --note-ink:#2A1D1A; --cheek:#F0907A;
+  --slate:#2E3B4E; --slate-hi:#3A4A60; --frame:#C98B62; --frame-dk:#A8704C; --chalk:#F4F7FB;
+  --f-display:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --f-ui:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-ui)}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 56px;display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.15;letter-spacing:-.015em}
+p{margin:0}
+.blue{color:var(--accent)}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+
+/* header */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.brandbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;display:flex;align-items:center;gap:18px;padding:12px 0;margin-bottom:-6px;
+  background:rgba(255,255,255,.88);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);
+  border-bottom:2px dashed var(--line);box-shadow:0 0 0 100vmax rgba(255,255,255,.88);clip-path:inset(0 -100vmax)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.logo .mark{width:40px;height:40px;flex:none;transition:transform .25s}
+.logo:hover .mark{transform:rotate(-8deg) scale(1.06)}
+.lockup{display:flex;flex-direction:column;gap:3px;min-width:0}
+.word{font:800 1.3rem/1 var(--f-display);letter-spacing:-.02em;white-space:nowrap}
+.sub{font:500 .8rem/1.3 var(--f-ui);color:var(--muted);max-width:36ch}
+.hl{position:relative;z-index:0;color:var(--ink)}
+.hl::after{content:"";position:absolute;z-index:-1;left:-3px;right:-4px;bottom:-1px;height:.5em;background:var(--teal);opacity:.45;border-radius:3px;transform:rotate(-2deg)}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{font:600 .9rem var(--f-ui);color:var(--muted);text-decoration:none;padding:8px 12px;border-radius:8px;transition:background .15s,color .15s}
+.nav a:hover{background:var(--surface);color:var(--ink)}
+.cta{text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;padding:10px 16px!important;font-size:.88rem!important}
+.cta::after{content:"→";transition:transform .15s}
+.cta:hover::after{transform:translateX(3px)}
+.anchor{display:block;position:relative;top:-90px;visibility:hidden;height:0}
+#how,#sheet-area{scroll-margin-top:90px}
+html{scroll-behavior:smooth}
+@media (max-width:1000px){.sub{max-width:28ch}}
+@media (max-width:860px){.nav{display:none}.cta{margin-left:auto}}
+@media (max-width:560px){.sub{display:none}.word{font-size:1.15rem}.logo .mark{width:34px;height:34px}}
+@media (max-width:380px){.cta::after{content:none}}
+.tag{font:600 .78rem var(--f-ui);padding:5px 11px;border-radius:999px;background:var(--teal-soft);color:var(--teal-ink)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) minmax(0,1.15fr);gap:26px;align-items:center}
+.stage-art{position:relative;width:100%;max-width:170px;aspect-ratio:1;justify-self:center}
+.stage-art svg{width:100%;height:100%;display:block}
+.qm{position:absolute;font:800 1.5rem var(--f-display);color:var(--accent);animation:floatq 3s ease-in-out infinite}
+.qm:nth-of-type(1){top:0;right:0}
+.qm:nth-of-type(2){top:26%;left:-6%;color:var(--teal);font-size:1.15rem;animation-delay:-1s}
+.qm:nth-of-type(3){top:-8%;left:36%;color:var(--sky);font-size:1.05rem;animation-delay:-2s}
+@keyframes floatq{50%{transform:translateY(-10px) rotate(10deg)}}
+.bob{animation:bob 3.2s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.mascot .eyes{transform-box:fill-box;transform-origin:center;animation:blink 4.5s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.mascot .pencil{transform-box:fill-box;transform-origin:15% 85%;animation:scribble 1.6s ease-in-out infinite}
+@keyframes scribble{50%{transform:rotate(-9deg)}}
+.speech{position:relative;background:var(--accent-soft);border-radius:18px;padding:16px 18px;font:600 1.08rem/1.5 var(--f-ui);min-height:6.4em}
+.speech::before{content:"";position:absolute;left:-9px;top:34px;width:18px;height:18px;background:var(--accent-soft);transform:rotate(45deg)}
+.caret{display:inline-block;width:2px;height:1em;background:var(--accent);vertical-align:-2px;margin-left:2px;animation:caret 1s steps(1) infinite}
+@keyframes caret{50%{opacity:0}}
+.pitch{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font:700 .76rem/1 var(--f-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--teal-ink)}
+.pitch h1{font:800 clamp(1.9rem,4.4vw,2.7rem)/1.1 var(--f-display)}
+.pitch p{color:var(--muted);max-width:52ch}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.step{display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:14px;background:var(--surface);font-size:.92rem;min-width:0}
+.step b{font-size:1rem}
+.step span:last-child{color:var(--muted)}
+.step .n{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font:800 .9rem var(--f-display);background:var(--accent);color:#fff}
+.step:nth-child(2) .n{background:var(--teal);color:var(--ink)}
+.step:nth-child(3) .n{background:var(--sky)}
+@media (max-width:1040px){.hero{grid-template-columns:minmax(0,150px) minmax(0,1fr)}.pitch{grid-column:1/-1}}
+@media (max-width:620px){
+  .hero{grid-template-columns:1fr}.stage-art{max-width:130px}
+  .speech::before{left:50%;top:-8px;margin-left:-9px}
+  .steps{grid-template-columns:1fr}
+}
+
+/* builder + sheet */
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+.builder{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 10px 30px -22px rgba(11,27,51,.35)}
+.builder-h{display:flex;align-items:center;gap:10px}
+.builder-h .n{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font:800 .9rem var(--f-display);background:var(--accent);color:#fff}
+.builder-h h2{font:800 1.2rem var(--f-display)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field > label,.lbl{font:700 .82rem var(--f-ui);color:var(--ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input[type="text"],select,textarea{font:500 .95rem var(--f-ui);color:var(--ink);background:var(--field);border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;width:100%;min-width:0}
+input[type="text"]:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none}
+textarea{resize:vertical;min-height:64px}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+
+.seg{display:grid;grid-auto-columns:1fr;grid-auto-flow:column;gap:4px;background:var(--surface);border-radius:10px;padding:4px}
+.seg label{text-align:center;padding:8px 6px;cursor:pointer;font:600 .86rem var(--f-ui);border-radius:7px;color:var(--muted);position:relative;transition:background .15s,color .15s}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--bg);color:var(--accent);box-shadow:0 1px 3px rgba(11,27,51,.12)}
+.seg label:has(input:focus-visible){outline:3px solid var(--sky);outline-offset:1px}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:999px;padding:5px 11px;font:600 .8rem var(--f-ui);cursor:pointer;user-select:none;position:relative;color:var(--muted);transition:all .15s}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip:has(input:checked){background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.chip:has(input:checked)::before{content:"✓";font-weight:800;font-size:.75rem}
+.chip:has(input:focus-visible){outline:3px solid var(--sky);outline-offset:2px}
+
+.drop{border:2px dashed var(--line);border-radius:14px;padding:16px;text-align:center;color:var(--muted);font-size:.88rem;cursor:pointer;position:relative;background:var(--surface);transition:border-color .15s,background .15s}
+.drop.over,.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop strong{color:var(--accent)}
+.files{display:flex;flex-direction:column;gap:6px}
+.file{display:flex;align-items:center;gap:8px;font-size:.86rem;background:var(--teal-soft);border-radius:10px;padding:7px 10px;min-width:0}
+.file .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.file .meta{font:500 .74rem var(--f-mono);color:var(--teal-ink);white-space:nowrap}
+.file .meta.warn{color:var(--danger)}
+.file button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px}
+
+details.more{border-top:1px solid var(--line);padding-top:14px}
+details.more summary{cursor:pointer;font-weight:700;font-size:.92rem}
+details.more .inner{display:flex;flex-direction:column;gap:13px;margin-top:13px}
+
+.btn{font:700 .95rem var(--f-ui);border-radius:10px;padding:13px 18px;cursor:pointer;border:1.5px solid transparent;transition:background .15s}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.primary:not(:disabled):hover{background:var(--accent-hover)}
+.btn.primary:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:var(--bg);color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn.small{padding:7px 12px;font-size:.82rem}
+.actions{display:flex;gap:8px}
+.actions .primary{flex:1}
+.status{font-size:.86rem;color:var(--muted);min-height:1.4em;margin:0}
+.status.err{color:var(--danger)}
+.notice{font-size:.84rem;color:var(--ink);background:var(--warn-soft);border-radius:10px;padding:10px 12px;margin:0}
+.notice:empty{display:none}
+
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:14px}
+.toolbar .spacer{flex:1}
+.toolbar .seg{min-width:220px}
+.tag.ex{background:var(--warn-soft);color:#9A5B00}
+.toolbar select{width:auto;max-width:230px;padding:7px 10px;font-size:.82rem}
+
+.revise{margin-top:16px;background:var(--surface);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.revise .row{display:flex;gap:8px;flex-wrap:wrap}
+.revise textarea{flex:1 1 260px;min-height:46px}
+.endbar{margin-top:16px;background:linear-gradient(135deg,var(--accent-soft),var(--teal-soft));border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.endbar-h{display:flex;gap:14px;align-items:center}
+.endbar-h svg{width:48px;height:48px;flex:none}
+.endbar-h h3{font:800 1.2rem var(--f-display)}
+.endbar-h p{color:var(--muted);font-size:.92rem;margin-top:2px}
+.endbar-btns{display:flex;flex-wrap:wrap;gap:8px}
+.endbar-btns .btn{flex:1 1 190px}
+.endbar .status:empty{display:none}
+.sheet-scroll{overflow-x:auto;min-width:0;background:var(--surface);border-radius:18px;padding:18px 12px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+
+<style id="sheetcss">
+/* The worksheet is a printed paper object: one fixed light palette, LaTeX-like typography. */
+.ws { --p-paper: #ffffff; --p-ink: #1b1b1b; --p-muted: #555; --p-rule: #222; --p-faint: #c9c9c9; --p-ans: #c0262d;
+  --c-green: #0b7a2e; --c-green-bg: #effaf1; --c-navy: #14287a; --c-navy-bg: #eff1fb; --c-blue: #1565c0; --c-blue-bg: #eef3fc;
+  --c-orange: #b85c00; --c-orange-bg: #fff8ec; --c-black: #111; --c-black-bg: #f2f2f2; --c-cream: #fffbe6;
+  font-family: "STIX Two Text", "Latin Modern Roman", "Cambria", Georgia, serif; color: var(--p-ink); font-size: 16px; line-height: 1.5;
+  display: flex; flex-direction: column; gap: 18px; }
+.ws .page { background: var(--p-paper); width: 100%; max-width: 820px; margin: 0 auto; padding: 46px 64px 30px; border-radius: 3px; box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 12px 30px -16px rgba(10,20,50,.4); position: relative; min-height: 560px; display: flex; flex-direction: column; }
+@media (max-width: 640px) { .ws .page { padding: 28px 20px 22px; } }
+.ws .runhead { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; border-bottom: 1px solid var(--p-rule); padding-bottom: 3px; margin-bottom: 18px; }
+.ws .runhead span:first-child { font-variant: small-caps; letter-spacing: .02em; }
+.ws .pbody { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.ws .pfoot { text-align: center; font-size: 13px; margin-top: 22px; }
+.ws p { margin: 0; }
+.ws h2.s-h { font-size: 23px; font-weight: 700; margin: 14px 0 2px; display: flex; gap: 18px; line-height: 1.25; }
+.ws h3.ss-h { font-size: 18px; font-weight: 700; margin: 8px 0 0; }
+.ws ul, .ws ol { margin: 0; padding-left: 1.5em; display: flex; flex-direction: column; gap: 3px; }
+.ws code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .86em; }
+.ws mjx-container[display="true"] { margin: .5em 0 !important; overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+
+/* cover */
+.ws .cover { justify-content: flex-start; gap: 16px; }
+.ws .cover .inst { text-align: center; margin-top: 10px; }
+.ws .cover .inst img { max-height: 86px; max-width: 70%; }
+.ws .cover .inst b { font-size: 22px; letter-spacing: .01em; color: var(--c-navy); }
+.ws .cover h1 { text-align: center; font-size: 30px; font-weight: 700; margin: 26px 0 0; line-height: 1.2; text-wrap: balance; }
+.ws .cover .course { text-align: center; font-size: 16px; color: var(--p-muted); font-style: italic; }
+.ws .cover .learn h4 { font-size: 17px; margin: 14px 0 6px; }
+.ws .credo { margin: 6px auto 0; width: min(100%, 480px); text-align: center; }
+.ws .credo h5 { font-size: 14.5px; margin: 0 0 6px; }
+.ws .credo div { border: 1.5px solid var(--p-rule); border-radius: 6px; background: #f8f8f8; padding: 10px 14px; font-style: italic; font-size: 15px; line-height: 1.45; }
+.ws .credo div span { display: block; font-style: normal; margin-top: 6px; }
+.ws .qcard { background: #111; color: #f4f4f4; border: 3px double #999; padding: 22px 26px; text-align: center; font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 16.5px; line-height: 1.5; margin: 6px auto; width: min(100%, 560px); }
+.ws .qcard .by { display: block; margin-top: 12px; font-family: "Caveat", cursive; font-size: 20px; color: #ddd; }
+.ws .readings h4 { font-size: 18px; margin: 4px 0 2px; }
+.ws .brandline { text-align: center; font-variant: small-caps; letter-spacing: .12em; font-size: 14px; color: var(--p-muted); margin-top: 6px; }
+.ws .howto { margin-top: auto; border-top: 1px solid var(--p-rule); padding-top: 12px; font-size: 14.5px; }
+.ws .idlines { margin-top: auto; display: flex; flex-direction: column; gap: 10px; font-weight: 700; font-size: 14.5px; padding-top: 18px; }
+.ws .idlines div { display: flex; gap: 8px; align-items: flex-end; }
+.ws .idlines div span { width: min(60%, 300px); border-bottom: 1px solid var(--p-rule); height: 1.1em; }
+
+/* answer blanks */
+.ws .blank { display: inline-block; min-width: 4.6em; border-bottom: 1px solid var(--p-rule); padding: 0 .45em; text-align: center; line-height: 1.35; vertical-align: baseline; max-width: 100%; }
+.ws .blank.empty { min-width: 8em; }
+.ws .ans { visibility: hidden; color: var(--p-ans); font-family: "Caveat", cursive; font-size: 1.22em; line-height: 1; }
+.ws .ans mjx-container { color: var(--p-ans); }
+.ws td .blank, .ws .cellblank { border: 0; min-width: 0; display: inline; padding: 0; }
+.ws pre .blank { min-width: 7em; font-family: inherit; }
+.ws pre .ans { font-family: "Caveat", cursive; font-size: 1.15em; }
+.ws .model { display: none; color: var(--p-ans); font-family: "Caveat", cursive; font-size: 21px; line-height: 1.25; padding: 4px 2px 0; }
+.ws.teacher .ans { visibility: visible; }
+.ws.teacher .model { display: block; }
+.ws .lines { height: calc(var(--n, 2) * 2.05em); background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2.05em - 1px), var(--p-rule) calc(2.05em - 1px), var(--p-rule) 2.05em); margin-top: 2px; }
+.ws .cbox .lines { background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2.05em - 1px), #b8b8b8 calc(2.05em - 1px), #b8b8b8 2.05em); }
+.ws .drawbox { border: 1px solid var(--p-rule); padding: 4px 8px; margin-top: 4px; }
+.ws .drawbox > i { font-size: 14.5px; }
+.ws .choice { display: flex; gap: 34px; justify-content: center; margin: 6px 0 2px; flex-wrap: wrap; }
+.ws .choice .opt { display: inline-flex; align-items: center; gap: 7px; }
+.ws .choice .opt.boxed { border: 1px solid var(--p-rule); padding: 3px 12px; }
+.ws .cb { width: .78em; height: .78em; border: 1px solid var(--p-rule); display: inline-block; position: relative; }
+.ws.teacher .opt.is-ans .cb::after { content: "✕"; position: absolute; inset: -.45em 0 0 -.05em; color: var(--p-ans); font-size: 1.1em; font-weight: 700; font-family: system-ui, sans-serif; }
+.ws.teacher .opt.is-ans { color: var(--p-ans); }
+
+.ws .prompt { display: flex; flex-direction: column; gap: 2px; }
+.ws .prompt .q b.lab { margin-right: .35em; }
+
+/* callout boxes (tcolorbox look) */
+.ws .cbox { border: 1.2px solid var(--k); border-radius: 4px; background: var(--kb); overflow: hidden; }
+.ws .cbox-h { background: var(--k); color: #fff; padding: 3px 12px; font-weight: 600; font-size: 15.5px; }
+.ws .cbox-b { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.ws .k-green { --k: var(--c-green); --kb: var(--c-green-bg); }
+.ws .k-navy { --k: var(--c-navy); --kb: var(--c-navy-bg); }
+.ws .k-discovery { --k: var(--c-navy); --kb: var(--c-cream); }
+.ws .k-discovery .cbox-b { font-weight: 600; }
+.ws .k-blue { --k: var(--c-blue); --kb: var(--c-blue-bg); }
+.ws .k-orange { --k: var(--c-orange); --kb: var(--c-orange-bg); }
+.ws .k-black { --k: var(--c-black); --kb: var(--c-black-bg); }
+.ws .k-plain { --k: var(--p-rule); --kb: transparent; }
+.ws .k-plain .cbox-h { background: transparent; color: var(--p-ink); font-style: italic; font-weight: 400; padding-bottom: 0; }
+
+/* tables */
+.ws .tbl { overflow-x: auto; }
+.ws .tbl .cap { font-size: 14.5px; margin-bottom: 4px; }
+.ws table.fill { border-collapse: collapse; margin: 0 auto; min-width: 50%; font-size: 15.5px; }
+.ws table.fill th, .ws table.fill td { border: 1px solid var(--p-rule); padding: 6px 12px; text-align: center; height: 2.3em; vertical-align: middle; }
+.ws table.fill th { font-weight: 700; }
+.ws table.pairs { margin: 2px auto; border-collapse: collapse; }
+.ws table.pairs td { padding: 4px 10px; }
+.ws table.pairs td:first-child { text-align: right; }
+.ws table.pairs td.arr { color: var(--p-muted); }
+
+/* two columns */
+.ws .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.ws .col { display: flex; flex-direction: column; gap: 10px; padding: 0 18px; min-width: 0; }
+.ws .col:first-child { padding-left: 0; border-right: 1.5px solid var(--p-rule); }
+.ws .col:last-child { padding-right: 0; }
+.ws .col-h { border: 1px solid var(--p-rule); text-align: center; font-weight: 700; font-size: 19px; padding: 4px 6px; margin-bottom: 4px; }
+@media (max-width: 640px) { .ws .cols { grid-template-columns: 1fr; gap: 16px; } .ws .col { padding: 0; } .ws .col:first-child { border-right: 0; border-bottom: 1.5px solid var(--p-rule); padding-bottom: 14px; } }
+
+/* derivation, code, graph, flow, game */
+.ws .derive { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: baseline; margin: 2px auto; width: min(100%, 560px); }
+.ws .derive .eq { text-align: right; }
+.ws .derive .blank { min-width: min(100%, 16em); }
+.ws pre.code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13.5px; line-height: 1.7; border: 1px solid var(--p-rule); border-radius: 3px; padding: 10px 12px; margin: 0; overflow-x: auto; white-space: pre; background: #fff; }
+.ws figure.graph { margin: 4px 0; text-align: center; }
+.ws figure.graph svg { max-width: 100%; height: auto; }
+.ws figure.graph figcaption { font-size: 14.5px; margin-top: 2px; }
+.ws .flow { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+.ws .flow .fb { border: 2px solid var(--p-rule); border-radius: 10px; padding: 10px 16px; font-size: 19px; text-align: center; max-width: 220px; }
+.ws .flow .fa { display: flex; flex-direction: column; align-items: center; font-size: 14px; min-width: 70px; }
+.ws .flow .fa::after { content: ""; display: block; width: 100%; min-width: 70px; height: 0; border-top: 1.5px solid var(--p-rule); margin-top: 3px; }
+.ws .flow .fa span::after { content: " →"; }
+.ws .game { display: flex; flex-direction: column; gap: 4px; }
+.ws .game h4 { margin: 4px 0 2px; font-size: 17px; }
+.ws .tryhere { color: var(--p-faint); font-style: italic; font-size: 14px; }
+.ws .empty { text-align: center; color: var(--p-muted); font-family: "IBM Plex Sans", system-ui, sans-serif; padding: 80px 10px; }
+.ws .pending-dot { color: var(--p-muted); font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 13px; }
+.ws.pdf { gap: 0; }
+.ws.pdf .page { box-shadow: none; max-width: none; min-height: 0; padding: 0 4px; border-radius: 0; margin: 0; }
+.ws.pdf .page + .page { page-break-before: always; break-before: page; }
+.ws.pdf .cover { min-height: 980px; }
+.ws.pdf .pfoot, .ws.pdf .runhead { display: none; }
+.ws.pdf mjx-container[display="true"] { overflow: visible; }
+.ws.pdf .tbl, .ws.pdf pre.code { overflow: visible; }
+.ws.pdf pre.code { white-space: pre-wrap; word-break: break-word; }
+@media print { .ws { gap: 0; } .ws .page { box-shadow: none; max-width: none; min-height: 0; padding: 0; break-after: page; } .ws .cbox, .ws figure, .ws table, .ws .derive { break-inside: avoid; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="brandbar" id="top">
+    <a class="logo" href="#top" aria-label="Slate, home">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+        <g transform="rotate(-6 20 20)">
+          <rect x="3" y="6" width="34" height="28" rx="4" fill="var(--frame)"/>
+          <rect x="6.5" y="9.5" width="27" height="21" rx="2" fill="var(--slate)"/>
+          <path d="M12 21l4.5 4.5L28 14" fill="none" stroke="var(--chalk)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11 13.5h5" stroke="var(--teal)" stroke-width="1.8" stroke-linecap="round"/>
+        </g>
+      </svg>
+      <span class="lockup">
+        <span class="word"><span class="hl">Slate</span></span>
+        <span class="sub">Turn any lecture, chapter or video into a worksheet you solve by hand</span>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#sheet-area">See an example</a>
+    </nav>
+    <a class="btn primary small cta" href="#make">Make a worksheet</a>
+  </header>
+
+  <section class="hero">
+    <div class="stage-art bob" aria-hidden="true">
+      <svg class="mascot" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="58" fill="#E8F1FF"/>
+        <g transform="rotate(-6 58 62)">
+          <rect x="18" y="30" width="80" height="62" rx="8" fill="var(--frame)"/>
+          <rect x="18" y="86" width="80" height="6" rx="3" fill="var(--frame-dk)"/>
+          <rect x="25" y="37" width="66" height="48" rx="4" fill="var(--slate)"/>
+          <path d="M31 44h14M31 49h9" stroke="var(--chalk)" stroke-width="1.6" stroke-linecap="round" opacity=".45"/>
+          <path d="M74 44q4-3 8 0" stroke="var(--teal)" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".8"/>
+          <path d="M43 55q4-3 8 0M65 55q4-3 8 0" fill="none" stroke="var(--chalk)" stroke-width="2.4" stroke-linecap="round"/>
+          <g class="eyes" fill="var(--chalk)"><ellipse cx="47" cy="62" rx="3" ry="3.6"/><ellipse cx="69" cy="62" rx="3" ry="3.6"/></g>
+          <circle cx="40" cy="70" r="3.6" fill="var(--cheek)" opacity=".55"/><circle cx="76" cy="70" r="3.6" fill="var(--cheek)" opacity=".55"/>
+          <path d="M51 71q7 7 14 0" fill="none" stroke="var(--chalk)" stroke-width="2.4" stroke-linecap="round"/>
+        </g>
+        <g class="pencil">
+          <rect x="88" y="70" width="7" height="26" rx="2" transform="rotate(32 91 83)" fill="var(--chalk)" stroke="#C9D3E0" stroke-width="1"/>
+        </g>
+      </svg>
+      <span class="qm">?</span><span class="qm">?</span><span class="qm">?</span>
+    </div>
+    <div class="speech" aria-live="polite"><span id="typed"></span><span class="caret"></span></div>
+    <div class="pitch">
+      <span class="eyebrow">Slate · make it stick</span>
+      <h1>Don't reread it. <span class="blue">Rebuild it.</span></h1>
+      <p>Give it the lecture, chapter or video you just finished. You get a worksheet that makes you predict, try small cases, fill in the reasoning and explain it back, so the idea actually stays with you.</p>
+    </div>
+  </section>
+
+  <div class="steps" id="how">
+    <div class="step"><span class="n">1</span><b>Add what you studied</b><span>Topics, a PDF chapter, slides or a lecture transcript.</span></div>
+    <div class="step"><span class="n">2</span><b>Work it with a pen</b><span>Stories, tables, blanks and a final challenge. No answers until you try.</span></div>
+    <div class="step"><span class="n">3</span><b>Check yourself</b><span>Flip to the solutions copy and see what stuck.</span></div>
+  </div>
+
+  <div class="grid">
+    <form class="builder" id="builder" autocomplete="off">
+      <span id="make" class="anchor" aria-hidden="true"></span>
+      <div class="builder-h"><span class="n">1</span><h2>What did you study?</h2></div>
+      <div class="field">
+        <label for="topic">Topics</label>
+        <input type="text" id="topic" placeholder="e.g. Bayes' theorem, base rates, the false-positive paradox">
+      </div>
+      <div class="field">
+        <label for="course">Based on</label>
+        <input type="text" id="course" placeholder="e.g. 3Blue1Brown on Bayes, or Rosen ch. 10, or my ML course week 3">
+      </div>
+
+      <div class="field">
+        <span class="lbl" id="len-lbl">Length</span>
+        <div class="seg" role="radiogroup" aria-labelledby="len-lbl">
+          <label><input type="radio" name="len" id="len-s" value="short">Short</label>
+          <label><input type="radio" name="len" id="len-m" value="standard" checked>One lecture</label>
+          <label><input type="radio" name="len" id="len-l" value="full">Long</label>
+        </div>
+        <p class="hint" id="lenHint">About 6–9 pages, 2–3 sections.</p>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Ingredients</span>
+        <div class="chips" id="ingr">
+          <label class="chip"><input type="checkbox" value="cover" id="i-cover" checked>Title page</label>
+          <label class="chip"><input type="checkbox" value="story" id="i-story" checked>Story / history hook</label>
+          <label class="chip"><input type="checkbox" value="reflect" id="i-reflect" checked>Self-check</label>
+          <label class="chip"><input type="checkbox" value="discover" id="i-discover" checked>Discover before define</label>
+          <label class="chip"><input type="checkbox" value="tables" id="i-tables" checked>Fill-in tables</label>
+          <label class="chip"><input type="checkbox" value="derive" id="i-derive" checked>Guided derivations</label>
+          <label class="chip"><input type="checkbox" value="code" id="i-code">Bridge to code</label>
+          <label class="chip"><input type="checkbox" value="reallife" id="i-reallife" checked>Real-world use</label>
+          <label class="chip"><input type="checkbox" value="diagrams" id="i-diagrams">Graph diagrams</label>
+          <label class="chip"><input type="checkbox" value="game" id="i-game" checked>Final challenge</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Source material</span>
+        <div class="drop" id="drop">
+          <input type="file" id="fileIn" multiple accept=".pdf,.txt,.md,.tex,.csv,.vtt,.srt,image/png,image/jpeg,image/webp">
+          <strong>Add files</strong> or drop them here<br>
+          <span class="hint" id="dropHint">Book chapter, slides, notes or a lecture transcript (PDF, TXT, VTT, SRT, Markdown, LaTeX).</span>
+        </div>
+        <div class="files" id="fileList"></div>
+        <textarea id="paste" placeholder="…or paste a transcript or your notes here"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="extra">Extra instructions</label>
+        <textarea id="extra" placeholder="e.g. Focus on intuition over proofs. Skip the last section of the chapter. Use cooking analogies."></textarea>
+      </div>
+
+      <details class="more" id="more">
+        <summary>About you and more options</summary>
+        <div class="inner">
+          <div class="field">
+            <label for="context">About you</label>
+            <input type="text" id="context" placeholder="e.g. Software engineer, comfortable with school algebra">
+            <p class="hint">Examples and analogies are pitched to this.</p>
+          </div>
+          <div class="field">
+            <label for="anchor">Running metaphor (optional)</label>
+            <input type="text" id="anchor" placeholder="e.g. Mathematics is a game: definitions, rules, objectives, strategy">
+          </div>
+          <div class="field">
+            <span class="lbl" id="model-lbl">Model</span>
+            <div class="seg" role="radiogroup" aria-labelledby="model-lbl">
+              <label><input type="radio" name="tier" id="tier-default" value="default" checked>Balanced</label>
+              <label><input type="radio" name="tier" id="tier-complex" value="complex">Most capable</label>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button type="submit" class="btn primary" id="genBtn">Generate worksheet</button>
+        <button type="button" class="btn ghost" id="stopBtn" hidden>Stop</button>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <p class="notice" id="notice">Share this page with anyone: each person generates with their own Claude account.</p>
+    </form>
+
+    <section style="min-width:0" id="sheet-area">
+      <div class="toolbar">
+        <span class="tag ex" id="exampleTag">Example sheet</span>
+        <div class="seg" role="radiogroup" aria-label="Version">
+          <label><input type="radio" name="copy" id="copy-student" value="student" checked>Worksheet</label>
+          <label><input type="radio" name="copy" id="copy-teacher" value="teacher">With solutions</label>
+        </div>
+        <span class="spacer"></span>
+        <select id="recent" aria-label="Recent worksheets" hidden></select>
+        <button type="button" class="btn ghost small" id="dlZip" hidden>Overleaf (.zip)</button>
+        <button type="button" class="btn ghost small" id="dlHtml" hidden>PDF</button>
+        <button type="button" class="btn ghost small" id="cpTex">Copy LaTeX</button>
+      </div>
+      <p class="status" id="exportStatus" role="status" aria-live="polite"></p>
+      <div class="sheet-scroll"><div class="ws" id="sheet"></div></div>
+      <div class="endbar" id="endbar">
+        <div class="endbar-h">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><g transform="rotate(-6 20 20)"><rect x="3" y="6" width="34" height="28" rx="4" fill="var(--frame)"/><rect x="6.5" y="9.5" width="27" height="21" rx="2" fill="var(--slate)"/><path d="M20 13.5v11m-4.5-4.5 4.5 4.5 4.5-4.5" fill="none" stroke="var(--chalk)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+          <div><h3>Take it with you</h3><p>Print the worksheet, attempt it with a pen, then check yourself with the solutions copy.</p></div>
+        </div>
+        <div class="endbar-btns" id="endDl">
+          <button type="button" class="btn primary" id="endWs">Download worksheet (PDF)</button>
+          <button type="button" class="btn ghost" id="endSol">With solutions (PDF)</button>
+          <button type="button" class="btn ghost" id="endZip">Overleaf project (.zip)</button>
+          <button type="button" class="btn ghost" id="endTex">Copy LaTeX</button>
+        </div>
+        <p class="hint" id="endHint">A4 PDFs, ready to print. The Overleaf project gives you editable LaTeX.</p>
+        <p class="status" id="endStatus" role="status" aria-live="polite"></p>
+      </div>
+      <div class="revise" id="revise" hidden>
+        <label class="lbl" for="reviseText">Revise this worksheet</label>
+        <div class="row">
+          <textarea id="reviseText" placeholder="e.g. Add a second exploration table before the theorem. Make the challenge harder. Use a cooking analogy instead of the party story."></textarea>
+          <button type="button" class="btn primary" id="reviseBtn">Revise</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script type="text/plain" id="pedagogy">
+You are writing a WORKSHEET for a self-directed learner. They have already met this material once (a lecture, a book chapter, a video, a course module) or they name the topics they want to learn. The worksheet makes the ideas stick by making them REBUILD each idea with a pen instead of rereading it: predicting, trying small cases, filling in the reasoning, explaining in their own words. It is NOT a test and NOT a question bank. It speaks to the learner directly in a warm, plain voice ("Let's...", "Didn't get it? That is completely okay.", "Hold this thought."). Never address them as a student in a class: no mention of lectures you are giving, attendance, roll numbers, semesters or grades.
+
+HOW EACH CONCEPT IS TAUGHT (the arc; follow it for every major idea)
+1. HOOK. Open with something that makes the idea necessary before naming it: a short story or historical puzzle (e.g. the Seven Bridges of Königsberg), an etymology ("trivial" from tri + via), a deliberately-too-hard concrete problem (e.g. "In how many ways can you make a fruit salad with n fruits if apples must be even..." with a table to try), or an everyday rule to simulate (e.g. "If today is Wednesday, wear pink" to understand p → q).
+2. SELF-CHECK. Ask what the learner already believes or remembers from the source ("Before reading on, try to define it in one line."), with Yes/No boxes or ruled lines. Retrieval before re-exposure is what makes it stick.
+3. EXPLORE CONCRETE CASES. Small cases the learner computes by hand: partially-filled tables, "try three routes" attempt lines, simulate-a-rule tables with Yes/No cells, degree counts, values of n = 1, 2, 5, 10.
+4. NOTICE AND CONJECTURE. Questions that make the learner state the pattern in their own words ("What do you notice about...?").
+5. REVEAL. Only now give the result in a highlighted box named after the discovery ("Euler's Discovery", "The Big Idea", "Key Insight").
+6. WHY DOES THIS MAKE SENSE? An intuitive argument, often as a guided derivation where the learner fills in the middle steps ("The idea behind this rule is that: = ____ = ____").
+7. FORMALISE. Definition / Theorem / Rule boxes with precise statements; "Terminology Alert" boxes for vocabulary and common confusions.
+8. PRACTISE with gradually harder items, each still scaffolded (fill-in blanks inside sentences, tables, translate English to symbols, true/false with reasoning).
+9. BRIDGE. Connect to where this shows up in the learner's world: real systems and decisions, other fields, what this idea unlocks next ("Let's time travel to where you will meet this again..."). When asked, add a programming bridge: a two-column layout with the idea on the left and code on the right, with Python functions whose return expression is a blank.
+10. WIN THE GAME. Close a section with a challenge stated as Objective / Rules / Strategy and space to calculate.
+11. CLOSE with a short self-check: explain the core idea in one or two lines, as if to a friend.
+
+STYLE RULES
+- Never state an answer before the learner has had a go at it. Put the reveal after the activity.
+- Vary the interaction: blanks inside sentences, partly-filled tables, Yes/No or option boxes, analogy pairs to complete, "draw it here" boxes, code with blanks, ruled lines for explanations. A typical page has 2–5 things to write.
+- Leave some table cells as "(Try to fill this box)" invitations.
+- If a running metaphor is given, keep it visible throughout. Otherwise "Win The Game!" challenges still use Objective / Rules / Strategy.
+- Pitch examples and analogies to the learner described below (their work, everyday life, apps they use). If nothing is said, use everyday situations anyone recognises.
+- Use forward references ("A Strange Fact (Hold This Thought): ... We will return to this when we study ...").
+- Be exact. Every blank must have a correct, checkable answer for the solutions copy. Verify every number you put in a table.
+- Keep prose short. The learner should be writing, not reading long paragraphs.
+
+OUTPUT FORMAT: JSON LINES
+Reply with JSON Lines only: one complete JSON object per line, nothing else (no prose, no code fences, no numbering). Every object has a "t" field. The sheet is the sequence of lines.
+
+Text fields use this inline markup:
+- Math: LaTeX inside $...$ (inline) or $$...$$ (display). In JSON every backslash must be doubled: write "$\\frac{1}{1-x}$", "$p \\to q$", "$\\neg p$".
+- **bold**, *italic*, `code`.
+- A blank for the learner to fill: [[answer]] — the answer is hidden on the worksheet and shown in red on the solutions copy. Example: "Before proof, a statement is called a [[conjecture]]; after proof it becomes a [[theorem]]." The answer may contain math: [[$\\frac{1}{1-z}$]]. Never put a blank inside $...$. Use [[]] only for open-ended blanks with no single answer.
+- Never use \n or \t escapes. Never put a line break inside a string. One paragraph per "text" object.
+
+Block types (exact field names):
+{"t":"cover","title":"...","source":"what this is based on, e.g. the book/lecture/video named by the learner (or empty)","learn":["what the learner will rebuild","..."],"quote":{"text":"a real, correctly attributed quote by someone from the field","by":"Name"}}
+{"t":"section","title":"..."}   (numbered automatically)
+{"t":"subsection","title":"..."}
+{"t":"text","md":"one paragraph"}
+{"t":"list","ordered":false,"items":["...","..."]}
+{"t":"box_start","kind":"<kind>","title":"..."}  ... any blocks ... {"t":"box_end"}
+   kinds and their meaning: reflection (Self Check), why (Why X matters / history), story (narrative hook), bigidea (The Big Idea), insight (Key Insight), discovery (the revealed result, e.g. "Euler's Discovery"), definition, theorem, rule (e.g. "Rule 2: Addition Rule"), terminology (Terminology Alert), remark, strange (A Strange Fact (Hold This Thought)), exercise (named exercise, e.g. "Exercise: Unary Logical Operators"), quick (Quick Question), question (numbered question box, e.g. "Question 5: Comparing Growth Rates"), application (Application in Computer Science), hint.
+{"t":"prompt","label":"a)","q":"question text, may contain [[blanks]]","resp":{"type":"lines","n":3},"answer":"model answer for the solutions copy"}
+   resp types: {"type":"lines","n":N} ruled lines; {"type":"box","h":N,"label":"Draw the graph here:"} an empty framed area N lines tall; {"type":"choice","options":["Yes","No"],"answer":"No","boxed":false}; {"type":"none"} when the blanks inside q are the whole response.
+{"t":"table","caption":"...","headers":["p","q","$p \\to q$"],"rows":[["T","T","[[T]]"],["T","F","[[F]]"]]}   (cells may hold text, math, blanks; use "(Try to fill this box)" for an open invitation)
+{"t":"cols_start","left":"Propositional Logic","right":"Programming Structure"} ... left blocks ... {"t":"col_break"} ... right blocks ... {"t":"cols_end"}
+{"t":"pairs","lead":"Complete the analogy:","rows":[["Definitions","[[data types]]"],["Proof (Strategy)","[[algorithm]]"]]}
+{"t":"derive","lead":"The idea behind this rule is that:","start":"$\\langle cf_0, cf_1, \\ldots \\rangle \\leftrightarrow cf_0 + cf_1x + \\cdots$","steps":["[[$c(f_0 + f_1x + \\cdots)$]]","[[$c \\cdot F(x)$]]"]}
+{"t":"code","lang":"python","lines":["def can_access_admin(loggedIn, isAdmin):","    return [[loggedIn and isAdmin]]"]}
+{"t":"graph","caption":"...","directed":false,"nodes":[["a",0,0],["b",4,0],["c",4,3]],"edges":[["a","b"],["b","c","5"]]}   (coordinates on a 0–10 grid, y grows downward; optional third edge item is a weight label; repeat an edge for multi-edges)
+{"t":"flow","items":["Concrete Examples","General Structures"],"via":["Abstract out to"]}
+{"t":"game","objective":"...","rules":"...","strategy":"...","lines":5,"answer":"worked solution for the solutions copy"}
+{"t":"quote","text":"...","by":"..."}
+{"t":"pagebreak"}
+
+Write blocks in reading order. Close every box_start with box_end and every cols_start with cols_end. Use pagebreak between major sections. Every prompt and game gets an "answer".
+</script>
+
+<script type="text/plain" id="example">
+{"t":"cover","title":"Graphs: The Handshake Sheet","source":"Rosen, Discrete Mathematics and Its Applications, Section 10.2","learn":["Degree of a vertex","The Handshaking Lemma","Why odd-degree vertices come in pairs","Degrees in code: adjacency lists"],"quote":{"text":"The art of doing mathematics consists in finding that special case which contains all the germs of generality.","by":"David Hilbert"}}
+{"t":"section","title":"Let's Shake Hands First"}
+{"t":"text","md":"Before any definition, we start with a party."}
+{"t":"box_start","kind":"story","title":"The Diwali Party"}
+{"t":"text","md":"Seven friends meet at a Diwali party. Each of them claims: *\"I shook hands with exactly 3 people.\"* Riya, who loves catching people out, says at least one of them must be wrong."}
+{"t":"prompt","label":"a)","q":"Do you believe Riya?","resp":{"type":"choice","options":["Yes","No","Not sure yet"],"answer":"Yes"},"answer":"Yes"}
+{"t":"prompt","label":"b)","q":"Draw 7 dots and try to join each one to exactly 3 others.","resp":{"type":"box","h":5,"label":"Try here:"},"answer":"Every attempt leaves some dot with the wrong number of lines. It cannot be done."}
+{"t":"box_end"}
+{"t":"text","md":"Didn't manage it? That is completely okay. Let's collect some evidence before we argue."}
+{"t":"box_start","kind":"definition","title":"Definition: Degree"}
+{"t":"text","md":"The **degree** of a vertex $v$, written $\\deg(v)$, is the number of edges touching $v$. A loop at $v$ counts twice."}
+{"t":"box_end"}
+{"t":"graph","caption":"Graph $G_1$","nodes":[["a",0,0],["b",4,0],["c",4,3],["d",0,3]],"edges":[["a","b"],["b","c"],["c","d"],["d","a"],["a","c"]]}
+{"t":"graph","caption":"Graph $G_2$ (the house)","nodes":[["e",1.5,0],["d",0,1.6],["c",3,1.6],["a",0,4],["b",3,4]],"edges":[["a","b"],["b","c"],["c","d"],["d","a"],["c","e"],["d","e"]]}
+{"t":"table","caption":"Count everything you can.","headers":["Graph","Degrees","Sum of degrees","Edges","Odd-degree vertices"],"rows":[["$G_1$","[[3, 2, 3, 2]]","[[10]]","[[5]]","[[2]]"],["$G_2$","[[2, 2, 3, 3, 2]]","[[12]]","[[6]]","[[2]]"],["Your own graph","(Try to fill this box)","[[]]","[[]]","[[]]"]]}
+{"t":"subsection","title":"Making a Conjecture"}
+{"t":"prompt","label":"Question 1:","q":"Compare the last three columns. How is the sum of degrees related to the number of edges?","resp":{"type":"lines","n":2},"answer":"The sum of degrees is always twice the number of edges."}
+{"t":"prompt","label":"Question 2:","q":"Is the number of odd-degree vertices ever odd?","resp":{"type":"lines","n":2},"answer":"No. It is always even."}
+{"t":"box_start","kind":"discovery","title":"Euler's Discovery: The Handshaking Lemma"}
+{"t":"text","md":"In every graph $G = (V, E)$, $$\\sum_{v \\in V} \\deg(v) = 2|E|.$$"}
+{"t":"box_end"}
+{"t":"subsection","title":"Why does this make sense?"}
+{"t":"text","md":"Think of each edge as one handshake. Every handshake uses exactly [[two]] hands, so each edge adds [[2]] to the total of all degrees."}
+{"t":"box_start","kind":"rule","title":"Guided Proof: Count the Same Thing Twice"}
+{"t":"derive","lead":"Count the pairs (vertex, edge touching it) in two ways:","start":"$\\displaystyle\\sum_{v \\in V} \\deg(v)$","steps":["[[number of (vertex, edge) pairs]]","[[$\\displaystyle\\sum_{e \\in E} 2$]]","[[$2|E|$]]"]}
+{"t":"box_end"}
+{"t":"box_start","kind":"terminology","title":"Terminology Alert"}
+{"t":"list","items":["**Isolated vertex**: a vertex of degree 0.","**Pendant vertex**: a vertex of degree 1."]}
+{"t":"box_end"}
+{"t":"box_start","kind":"strange","title":"A Strange Fact (Hold This Thought)"}
+{"t":"text","md":"Right now, the number of people on Earth who have shaken hands an odd number of times is even. We will meet this trick, double counting, again in combinatorial proofs."}
+{"t":"box_end"}
+{"t":"pagebreak"}
+{"t":"section","title":"Bridge to Programming"}
+{"t":"cols_start","left":"Graph Theory","right":"Programming Structure"}
+{"t":"text","md":"**Step 1: Neighbourhoods.** $N(v)$ is the set of vertices joined to $v$."}
+{"t":"prompt","q":"For $G_1$: $N(c) =$ [[$\\{a, b, d\\}$]] and $\\deg(c) =$ [[3]].","resp":{"type":"none"},"answer":"N(c) = {a, b, d}, deg(c) = 3"}
+{"t":"text","md":"**Step 2: The lemma.** Adding all the $|N(v)|$ counts every edge [[twice]]."}
+{"t":"col_break"}
+{"t":"text","md":"**Step 1: Adjacency lists.** We store each vertex with the list of its neighbours."}
+{"t":"code","lang":"python","lines":["G1 = {'a': ['b', 'd', 'c'], 'b': ['a', 'c'],","      'c': ['b', 'd', 'a'], 'd': ['c', 'a']}","","def degree(G, v):","    return [[len(G[v])]]","","def num_edges(G):","    return [[sum(len(n) for n in G.values()) // 2]]"]}
+{"t":"cols_end"}
+{"t":"pairs","lead":"Complete the analogy:","rows":[["Vertex $v$","[[a key of the dictionary]]"],["$\\deg(v)$","[[len(G[v])]]"],["Handshaking Lemma","[[every edge appears in two lists]]"]]}
+{"t":"game","objective":"Settle Riya's argument: can 7 people each shake hands with exactly 3 others?","rules":"The definition of degree and the Handshaking Lemma.","strategy":"Add up all the degrees and compare with $2|E|$.","lines":5,"answer":"The degrees would add up to 7 × 3 = 21, an odd number. But the sum must equal 2|E|, which is even. Contradiction, so it is impossible. Riya is right."}
+{"t":"box_start","kind":"reflection","title":"Self Check"}
+{"t":"prompt","q":"Where exactly did our argument count the same thing twice? Answer in one line.","resp":{"type":"lines","n":2},"answer":"Each edge was counted once from each of its two endpoints."}
+{"t":"box_end"}
+</script>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const ls = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  };
+
+  // ---------------- JSONL parsing ----------------
+  function repair(line) {
+    // Double any lone backslash before a letter (LaTeX written without JSON escaping), keep \uXXXX.
+    return line.replace(/\\+(?=[A-Za-z])/g, (m, off, str) => {
+      if (m.length % 2 === 0) return m;
+      if (/^u[0-9a-fA-F]{4}/.test(str.slice(off + m.length, off + m.length + 5))) return m;
+      return m + '\\';
+    });
+  }
+  function parseJSONL(text, final) {
+    const out = []; let bad = 0;
+    const lines = String(text || '').replace(/\r/g, '').split('\n');
+    lines.forEach((raw, i) => {
+      const line = raw.trim();
+      if (!line || line.startsWith('```')) return;
+      const s = line.indexOf('{'); if (s < 0) return;
+      const body = line.slice(s);
+      let obj = null;
+      try { obj = JSON.parse(repair(body)); } catch (e) {
+        try { obj = JSON.parse(body); } catch (e2) { obj = null; }
+      }
+      if (obj && typeof obj === 'object' && obj.t) out.push(obj);
+      else if (final || i < lines.length - 1) bad++;
+    });
+    return { blocks: out, bad };
+  }
+
+  // ---------------- tree ----------------
+  function buildTree(blocks) {
+    const root = { t: 'root', kids: [] }; const stack = [root]; let cover = null;
+    const kidsOf = (n) => n.t === 'cols' ? n.cols[n.ci] : n.kids;
+    for (const b of blocks) {
+      const top = stack[stack.length - 1];
+      switch (b.t) {
+        case 'cover': cover = b; break;
+        case 'box_start': { const n = { t: 'box', kind: b.kind || 'remark', title: b.title, kids: [] }; kidsOf(top).push(n); stack.push(n); break; }
+        case 'box_end': { for (let i = stack.length - 1; i > 0; i--) if (stack[i].t === 'box') { stack.length = i; break; } break; }
+        case 'cols_start': { const n = { t: 'cols', left: b.left, right: b.right, cols: [[], []], ci: 0 }; kidsOf(top).push(n); stack.push(n); break; }
+        case 'col_break': { for (let i = stack.length - 1; i > 0; i--) if (stack[i].t === 'cols') { stack.length = i + 1; stack[i].ci = 1; break; } break; }
+        case 'cols_end': { for (let i = stack.length - 1; i > 0; i--) if (stack[i].t === 'cols') { stack.length = i; break; } break; }
+        case 'pagebreak': root.kids.push({ t: 'pagebreak' }); stack.length = 1; break;
+        default: kidsOf(top).push(b);
+      }
+    }
+    const pages = [[]];
+    for (const k of root.kids) { if (k.t === 'pagebreak') { if (pages[pages.length - 1].length) pages.push([]); } else pages[pages.length - 1].push(k); }
+    if (!pages[pages.length - 1].length && pages.length > 1) pages.pop();
+    return { cover, pages };
+  }
+
+  // ---------------- inline markup → HTML ----------------
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const MATH_RE = /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$(?:\\\$|[^$])+?\$/g;
+  function inl(s, mode) {
+    s = String(s == null ? '' : s);
+    const blanks = [], maths = [];
+    s = s.replace(/\[\[([\s\S]*?)\]\]/g, (_, a) => { blanks.push(a); return '\u0001B' + (blanks.length - 1) + '\u0001'; });
+    s = s.replace(MATH_RE, (m) => { maths.push(m); return '\u0001M' + (maths.length - 1) + '\u0001'; });
+    s = esc(s)
+      .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1<em>$2</em>')
+      .replace(/`([^`]+?)`/g, '<code>$1</code>');
+    s = s.replace(/\u0001M(\d+)\u0001/g, (_, i) => esc(maths[+i]));
+    s = s.replace(/\u0001B(\d+)\u0001/g, (_, i) => blankHTML(blanks[+i], mode));
+    return s;
+  }
+  function blankHTML(a, mode) {
+    const empty = !String(a).trim();
+    if (mode === 'cell') return `<span class="cellblank"><span class="ans">${empty ? '&nbsp;' : inl(a)}</span></span>`;
+    return `<span class="blank${empty ? ' empty' : ''}"><span class="ans">${empty ? '&nbsp;' : inl(a)}</span></span>`;
+  }
+  function codeLine(l) {
+    const parts = String(l).split(/\[\[([\s\S]*?)\]\]/);
+    return parts.map((p, i) => i % 2 ? `<span class="blank"><span class="ans">${esc(p) || '&nbsp;'}</span></span>` : esc(p)).join('');
+  }
+
+  // ---------------- graph SVG ----------------
+  function graphGeom(b) {
+    const nodes = (b.nodes || []).map((n) => Array.isArray(n) ? { id: String(n[0]), x: +n[1] || 0, y: +n[2] || 0 } : { id: String(n.id), x: +n.x || 0, y: +n.y || 0 });
+    const edges = (b.edges || []).map((e) => Array.isArray(e) ? { a: String(e[0]), b: String(e[1]), w: e[2] != null ? String(e[2]) : '' } : { a: String(e.from), b: String(e.to), w: e.label ? String(e.label) : '' });
+    const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    const groups = {};
+    edges.forEach((e) => { const k = [e.a, e.b].sort().join('\u0000'); (groups[k] = groups[k] || []).push(e); });
+    edges.forEach((e) => { const k = [e.a, e.b].sort().join('\u0000'); const g = groups[k]; const i = g.indexOf(e); e.bend = g.length > 1 ? (i - (g.length - 1) / 2) : 0; e.flip = e.a > e.b; });
+    const cx = nodes.reduce((s, n) => s + n.x, 0) / (nodes.length || 1), cy = nodes.reduce((s, n) => s + n.y, 0) / (nodes.length || 1);
+    return { nodes, edges, byId, cx, cy };
+  }
+  function graphSVG(b) {
+    const { nodes, edges, byId, cx, cy } = graphGeom(b);
+    if (!nodes.length) return '';
+    const U = 46, P = 30;
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = (maxX - minX) * U + 2 * P, H = (maxY - minY) * U + 2 * P;
+    const X = (x) => (x - minX) * U + P, Y = (y) => (y - minY) * U + P;
+    let svg = `<svg viewBox="0 0 ${W.toFixed(1)} ${H.toFixed(1)}" width="${W.toFixed(0)}" height="${H.toFixed(0)}" role="img" aria-label="${esc(b.caption || 'graph')}"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/></marker></defs>`;
+    for (const e of edges) {
+      const A = byId[e.a], B = byId[e.b]; if (!A || !B) continue;
+      let x1 = X(A.x), y1 = Y(A.y), x2 = X(B.x), y2 = Y(B.y);
+      if (A === B) { svg += `<circle cx="${x1}" cy="${y1 - 14}" r="12" fill="none" stroke="#1b1b1b" stroke-width="1.3"/>`; continue; }
+      const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1;
+      const nx = -dy / L, ny = dx / L, s = e.flip ? -1 : 1;
+      const off = e.bend * 26 * s;
+      const mx = (x1 + x2) / 2 + nx * off, my = (y1 + y2) / 2 + ny * off;
+      if (b.directed) { const sh = 7 / L; x2 -= dx * sh * (1 - Math.abs(off) / (L + 1)); y2 -= dy * sh * (1 - Math.abs(off) / (L + 1)); }
+      const d = off ? `M${x1},${y1} Q${(2 * mx - (x1 + x2) / 2).toFixed(1)},${(2 * my - (y1 + y2) / 2).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}` : `M${x1},${y1} L${x2.toFixed(1)},${y2.toFixed(1)}`;
+      svg += `<path d="${d}" fill="none" stroke="#1b1b1b" stroke-width="1.3"${b.directed ? ' marker-end="url(#arr)"' : ''}/>`;
+      if (e.w) { const lx = mx + nx * 11 * (off >= 0 ? 1 : -1) * (off ? 1 : 1), ly = my + ny * 11; svg += `<text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" font-size="13" text-anchor="middle" fill="#1b1b1b" font-family="STIX Two Text, serif">${esc(e.w)}</text>`; }
+    }
+    for (const n of nodes) {
+      const x = X(n.x), y = Y(n.y);
+      let vx = n.x - cx, vy = n.y - cy; const vl = Math.hypot(vx, vy);
+      if (vl < 1e-6) { vx = 0; vy = -1; } else { vx /= vl; vy /= vl; }
+      const lx = x + vx * 15, ly = y + vy * 15 + 5;
+      svg += `<circle cx="${x}" cy="${y}" r="4" fill="#1b1b1b"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="15" font-style="italic" text-anchor="middle" fill="#1b1b1b" font-family="STIX Two Text, serif">${esc(n.id)}</text>`;
+    }
+    return svg + '</svg>';
+  }
+
+  // ---------------- HTML rendering ----------------
+  const KIND = {
+    reflection: ['k-green', 'Self Check'], why: ['k-navy', 'Why This Matters'], story: ['k-navy', 'Story'], bigidea: ['k-orange', 'The Big Idea'],
+    insight: ['k-green', 'Key Insight'], discovery: ['k-discovery', 'The Discovery'], definition: ['k-green', 'Definition'], theorem: ['k-green', 'Theorem'],
+    rule: ['k-green', 'Rule'], terminology: ['k-orange', 'Terminology Alert'], remark: ['k-green', 'Remark'], strange: ['k-navy', 'A Strange Fact (Hold This Thought)'],
+    exercise: ['k-black', 'Exercise'], quick: ['k-black', 'Quick Question'], question: ['k-blue', 'Question'], application: ['k-navy', 'Application in Computer Science'],
+    hint: ['k-plain', 'Hint'], warning: ['k-orange', 'Watch Out']
+  };
+  let secNo = 0, tblNo = 0, figNo = 0;
+
+  function respHTML(p) {
+    const r = p.resp || (p.answer && !/\[\[/.test(p.q || '') ? { type: 'lines', n: 2 } : { type: 'none' });
+    const model = p.answer ? `<div class="model">${inl(p.answer)}</div>` : '';
+    switch (r.type) {
+      case 'lines': return model + `<div class="lines" style="--n:${Math.max(1, Math.min(14, +r.n || 2))}"></div>`;
+      case 'box': return `<div class="drawbox" style="min-height:${(Math.max(2, Math.min(20, +r.h || 4)) * 1.7).toFixed(1)}em">${r.label ? `<i>${inl(r.label)}</i>` : ''}${model}</div>`;
+      case 'choice': {
+        const ans = r.answer != null ? String(r.answer) : (p.answer != null ? String(p.answer) : '');
+        return `<div class="choice">${(r.options || ['Yes', 'No']).map((o) => `<span class="opt${r.boxed ? ' boxed' : ''}${String(o).trim().toLowerCase() === ans.trim().toLowerCase() ? ' is-ans' : ''}">${r.boxed ? '' : '<i class="cb"></i>'}${inl(o)}</span>`).join('')}</div>`;
+      }
+      default: return /\[\[/.test(p.q || '') ? '' : model;
+    }
+  }
+
+  function blockHTML(b, pending) {
+    switch (b.t) {
+      case 'section': return `<h2 class="s-h"><span>${++secNo}</span><span>${inl(b.title)}</span></h2>`;
+      case 'subsection': return `<h3 class="ss-h">${inl(b.title)}</h3>`;
+      case 'text': return `<p>${inl(b.md || b.text || '')}</p>`;
+      case 'list': { const tag = b.ordered ? 'ol' : 'ul'; return `<${tag}>${(b.items || []).map((i) => `<li>${inl(i)}</li>`).join('')}</${tag}>`; }
+      case 'quote': return `<div class="qcard">${inl(b.text)}<span class="by">— ${esc(b.by || '')} —</span></div>`;
+      case 'prompt': return `<div class="prompt"><div class="q">${b.label ? `<b class="lab">${inl(b.label)}</b>` : ''}${inl(b.q)}</div>${respHTML(b)}</div>`;
+      case 'table': {
+        const hs = b.headers || [];
+        return `<div class="tbl">${b.caption ? `<div class="cap">Table ${++tblNo}: <b>${inl(b.caption)}</b></div>` : ''}<table class="fill">${hs.length ? `<thead><tr>${hs.map((h) => `<th>${inl(h)}</th>`).join('')}</tr></thead>` : ''}<tbody>${(b.rows || []).map((r) => `<tr>${(r || []).map((c) => /^\(Try to fill this box\)$/i.test(String(c).trim()) ? `<td class="tryhere">${esc(c)}</td>` : `<td>${inl(c, 'cell')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      }
+      case 'pairs': return `${b.lead ? `<p><b>${inl(b.lead)}</b></p>` : ''}<table class="pairs"><tbody>${(b.rows || []).map((r) => `<tr><td>${inl(r[0])}</td><td class="arr">$\\leftrightarrow$</td><td>${inl(r[1])}</td></tr>`).join('')}</tbody></table>`;
+      case 'derive': return `${b.lead ? `<p>${inl(b.lead)}</p>` : ''}<div class="derive"><span></span><span>${inl(b.start || '')}</span>${(b.steps || []).map((s) => `<span class="eq">$=$</span><span>${inl(s)}</span>`).join('')}</div>`;
+      case 'code': return `<pre class="code">${(b.lines || String(b.src || '').split('\n')).map(codeLine).join('\n')}</pre>`;
+      case 'graph': return `<figure class="graph">${graphSVG(b)}${b.caption ? `<figcaption>Figure ${++figNo}: ${inl(b.caption)}</figcaption>` : ''}</figure>`;
+      case 'flow': {
+        const items = b.items || []; const via = [].concat(b.via || []);
+        return `<div class="flow">${items.map((it, i) => `<div class="fb">${inl(it)}</div>${i < items.length - 1 ? `<div class="fa"><span>${inl(via[i] || via[0] || '')}</span></div>` : ''}`).join('')}</div>`;
+      }
+      case 'game': return `<div class="game"><h4>Win The Game!</h4><p><b>Objective:</b> ${inl(b.objective)}</p>${b.rules ? `<p><b>Rules:</b> ${inl(b.rules)}</p>` : ''}${b.strategy ? `<p><b>Strategy:</b> ${inl(b.strategy)}</p>` : ''}<div class="tryhere">Calculate here</div>${b.answer ? `<div class="model">${inl(b.answer)}</div>` : ''}<div class="lines" style="--n:${Math.max(2, Math.min(14, +b.lines || 5))}"></div></div>`;
+      case 'box': {
+        const k = KIND[b.kind] || KIND.remark;
+        return `<div class="cbox ${k[0]}"><div class="cbox-h">${inl(b.title || k[1])}</div><div class="cbox-b">${b.kids.map((x) => blockHTML(x)).join('')}</div></div>`;
+      }
+      case 'cols': return `<div class="cols"><div class="col"><div class="col-h">${inl(b.left || '')}</div>${b.cols[0].map((x) => blockHTML(x)).join('')}</div><div class="col"><div class="col-h">${inl(b.right || '')}</div>${b.cols[1].map((x) => blockHTML(x)).join('')}</div></div>`;
+      default: return '';
+    }
+  }
+
+  const srcOf = (c) => c ? (c.source || c.course || '') : '';
+  function coverHTML(c) {
+    return `<section class="page cover"><div class="brandline">Slate · make it stick</div><h1>${inl(c.title || 'Worksheet')}</h1>${srcOf(c) ? `<div class="course">Based on ${inl(srcOf(c))}</div>` : ''}
+      ${(c.learn || []).length ? `<div class="learn"><h4>In this worksheet you will rebuild:</h4><ul>${c.learn.map((l) => `<li>${inl(l)}</li>`).join('')}</ul></div>` : ''}
+      ${c.quote && c.quote.text ? `<div class="qcard">${inl(c.quote.text)}<span class="by">— ${esc(c.quote.by || '')} —</span></div>` : ''}
+      <div class="howto"><b>How to use this sheet.</b> Work with a pen. Have a go at every blank and box before you look anything up, even if you are unsure. When you finish a section, check yourself against the solutions copy.</div></section>`;
+  }
+
+  function sheetHTML(blocks, opts = {}) {
+    secNo = 0; tblNo = 0; figNo = 0;
+    const { cover, pages } = buildTree(blocks);
+    const title = cover ? cover.title : 'Worksheet', course = srcOf(cover);
+    let h = cover ? coverHTML(cover) : '';
+    let n = 0;
+    pages.forEach((pg, i) => {
+      if (!pg.length) return;
+      n++;
+      h += `<section class="page"><div class="runhead"><span>${inl(title)}</span><span>${inl(course)}</span></div><div class="pbody">${pg.map((b) => blockHTML(b)).join('')}${opts.pending && i === pages.length - 1 ? '<p class="pending-dot">Writing…</p>' : ''}</div><div class="pfoot">${n}</div></section>`;
+    });
+    if (!h) h = `<section class="page"><div class="empty">${opts.pending ? 'Claude is reading your material and planning the sheet…' : 'Your worksheet will appear here.'}</div></section>`;
+    return h;
+  }
+
+  // ---------------- state & mounting ----------------
+  let current = { blocks: [], jsonl: '', example: true };
+  const sheet = $('sheet');
+  let typesetTimer = null;
+  function typeset(delay) {
+    clearTimeout(typesetTimer);
+    typesetTimer = setTimeout(() => {
+      const go = () => { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([sheet]).catch(() => {}); };
+      if (window.MathJax && MathJax.startup && MathJax.startup.promise) MathJax.startup.promise.then(go); else setTimeout(go, 800);
+    }, delay || 0);
+  }
+  function mount(blocks, opts = {}) {
+    if (window.MathJax && MathJax.typesetClear) { try { MathJax.typesetClear([sheet]); } catch (e) {} }
+    sheet.innerHTML = sheetHTML(blocks, opts);
+    typeset(opts.pending ? 700 : 0);
+  }
+  function applyCopy() { sheet.classList.toggle('teacher', $('copy-teacher').checked); }
+  $('copy-student').addEventListener('change', applyCopy); $('copy-teacher').addEventListener('change', applyCopy);
+
+  function setCurrent(jsonl, example) {
+    const { blocks } = parseJSONL(jsonl, true);
+    current = { blocks, jsonl, example };
+    $('exampleTag').hidden = !example;
+    $('revise').hidden = example || !sample;
+    mount(blocks);
+  }
+
+  // ---------------- form persistence ----------------
+  const PERSIST = ['context', 'anchor'];
+  const saved = ls.get('mis.form', {});
+  PERSIST.forEach((k) => { if (saved[k] != null && $(k)) $(k).value = saved[k]; });
+  PERSIST.forEach((k) => $(k).addEventListener('change', () => { const f = ls.get('mis.form', {}); f[k] = $(k).value; ls.set('mis.form', f); }));
+
+  const LEN = { short: 'About 3–4 pages, 1–2 sections.', standard: 'About 6–9 pages, 2–3 sections.', full: 'About 10–14 pages, 3–5 sections. Takes several minutes.' };
+  document.querySelectorAll('input[name="len"]').forEach((r) => r.addEventListener('change', () => { $('lenHint').textContent = LEN[r.value]; }));
+
+  // ---------------- files ----------------
+  const files = [];
+  let imgLimits = null;
+  const ON_WEB = !(window.claude && window.claude.use);
+  const IMG_SCALE = ON_WEB ? 1.15 : 1.6, IMG_Q = ON_WEB ? 0.7 : 0.85;
+  function renderFiles() {
+    $('fileList').innerHTML = files.map((f, i) => `<div class="file"><span class="nm" title="${esc(f.name)}">${esc(f.name)}</span><span class="meta${f.warn ? ' warn' : ''}">${esc(f.note)}</span><button type="button" data-i="${i}" aria-label="Remove ${esc(f.name)}">×</button></div>`).join('');
+  }
+  $('fileList').addEventListener('click', (e) => { const b = e.target.closest('button[data-i]'); if (b) { files.splice(+b.dataset.i, 1); renderFiles(); } });
+  const libs = {};
+  function loadScript(key, src) {
+    if (libs[key]) return libs[key];
+    libs[key] = new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = () => res(); s.onerror = () => { libs[key] = null; rej(new Error('load failed')); }; document.head.appendChild(s); });
+    return libs[key];
+  }
+  async function pdfjs() {
+    await loadScript('pdf', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    return window.pdfjsLib;
+  }
+  async function readPdf(file, entry) {
+    const lib = await pdfjs();
+    const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+    let text = '';
+    for (let p = 1; p <= doc.numPages; p++) {
+      if (p % 5 === 1) { entry.note = `reading ${p}/${doc.numPages}`; renderFiles(); }
+      const tc = await (await doc.getPage(p)).getTextContent();
+      text += `\n[Page ${p}]\n` + tc.items.map((it) => it.str + (it.hasEOL ? '\n' : ' ')).join('');
+    }
+    const words = text.split(/\s+/).filter(Boolean).length;
+    if (words > 40 * Math.min(doc.numPages, 3)) { entry.kind = 'text'; entry.text = text; entry.note = `${doc.numPages} pp · ${words.toLocaleString()} words`; return; }
+    if (!imgLimits) { entry.kind = 'none'; entry.warn = true; entry.note = 'scanned, no text found'; return; }
+    const max = Math.min(doc.numPages, imgLimits.maxCount);
+    entry.kind = 'images'; entry.blobs = [];
+    for (let p = 1; p <= max; p++) {
+      entry.note = `scanning ${p}/${max}`; renderFiles();
+      const page = await doc.getPage(p); const vp = page.getViewport({ scale: IMG_SCALE });
+      const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      entry.blobs.push(await new Promise((r) => c.toBlob(r, 'image/jpeg', IMG_Q)));
+    }
+    entry.note = `scanned · first ${max} pp as images`;
+  }
+  async function addFiles(list) {
+    for (const file of list) {
+      const entry = { name: file.name, kind: 'pending', note: 'reading…' };
+      files.push(entry); renderFiles();
+      try {
+        if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') await readPdf(file, entry);
+        else if (file.type.startsWith('image/')) {
+          if (!imgLimits) { entry.kind = 'none'; entry.warn = true; entry.note = 'images unavailable here'; }
+          else { entry.kind = 'images'; entry.blobs = [file]; entry.note = 'image'; }
+        } else { entry.kind = 'text'; entry.text = await file.text(); if (/\.(vtt|srt)$/i.test(file.name)) entry.text = cleanTranscript(entry.text); entry.note = `${entry.text.split(/\s+/).filter(Boolean).length.toLocaleString()} words`; }
+      } catch (e) { entry.kind = 'none'; entry.warn = true; entry.note = 'could not read'; }
+      renderFiles();
+    }
+  }
+  function cleanTranscript(t) {
+    return t.replace(/\r/g, '').split('\n')
+      .filter((l) => !/^WEBVTT/.test(l) && !/^\d+$/.test(l.trim()) && !/-->/.test(l) && !/^(NOTE|STYLE|Kind:|Language:)/.test(l.trim()))
+      .map((l) => l.replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+      .filter((l, i, a) => l !== a[i - 1]).join(' ');
+  }
+  const drop = $('drop');
+  $('fileIn').addEventListener('change', (e) => { addFiles([...e.target.files]); e.target.value = ''; });
+  ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('over')));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) addFiles([...e.dataTransfer.files]); });
+
+  // ---------------- prompts ----------------
+  const INGR = {
+    cover: 'a cover block (title, source, what the learner will rebuild, a real quote)',
+    story: 'a story, historical puzzle or etymology as the hook for each major idea',
+    reflect: 'Self Check boxes (retrieval before each new idea, explain-it-back at the end)',
+    discover: 'discover-before-define: concrete exploration and a conjecture BEFORE every reveal',
+    tables: 'fill-in tables (partly filled, simulation tables, value tables)',
+    derive: 'guided derivations with blank middle steps',
+    code: 'a two-column bridge to code (Python) with blanks in the code',
+    reallife: 'an "Application in Computer Science" or real-world application box',
+    diagrams: 'graph diagrams using the "graph" block where they help',
+    game: 'a "Win The Game!" challenge (Objective / Rules / Strategy) at the end of each section'
+  };
+  const LEN_SPEC = { short: 'Short: 1–2 sections, roughly 25–40 blocks.', standard: 'One lecture: 2–3 sections, roughly 55–85 blocks.', full: 'Long: 3–5 sections, roughly 90–140 blocks.' };
+
+  function sourceText() {
+    const parts = files.filter((f) => f.kind === 'text').map((f) => `=== ${f.name} ===\n${f.text}`);
+    if ($('paste').value.trim()) parts.push(`=== Pasted notes / transcript ===\n${$('paste').value.trim()}`);
+    let source = parts.join('\n\n');
+    const MAX = 110000; let cut = false;
+    if (source.length > MAX) { source = source.slice(0, MAX); cut = true; }
+    return { source, cut, imgs: files.filter((f) => f.kind === 'images').flatMap((f) => f.blobs) };
+  }
+  function buildPrompt() {
+    const ingr = [...document.querySelectorAll('#ingr input:checked')].map((i) => i.value);
+    const off = Object.keys(INGR).filter((k) => !ingr.includes(k));
+    const { source, cut, imgs } = sourceText();
+    const p = [$('pedagogy').textContent.trim(), '---', 'THE WORKSHEET TO WRITE'];
+    p.push(`Topic: ${$('topic').value.trim() || '(infer the topic from the source material)'}`);
+    if ($('course').value.trim()) p.push(`Based on: ${$('course').value.trim()} (use this as the cover "source")`);
+    p.push(`About the learner: ${$('context').value.trim() || 'a curious adult; assume only school mathematics unless the source needs more'}`);
+    p.push(`Length: ${LEN_SPEC[document.querySelector('input[name="len"]:checked').value]}`);
+    p.push(`Include: ${ingr.map((k) => INGR[k]).join('; ') || 'the core arc only'}.`);
+    if (off.length) p.push(`Leave out: ${off.map((k) => INGR[k]).join('; ')}.`);
+    if ($('anchor').value.trim()) p.push(`Running metaphor to keep visible throughout: ${$('anchor').value.trim()}`);
+    if ($('extra').value.trim()) p.push(`Teacher's extra instructions (follow closely):\n${$('extra').value.trim()}`);
+    if (source) p.push(`Source material the learner has gone through${cut ? ' (truncated)' : ''} (may be a lecture transcript, so ignore filler and asides). Build the worksheet from this material: use its notation, terms and examples, follow its order, and stay within what it covers.\n<<<SOURCE\n${source}\nSOURCE>>>`);
+    if (imgs.length) p.push(`${imgs.length} attached image(s) are pages of the source material; teach from them too.`);
+    p.push('Now write the worksheet as JSON Lines.');
+    return { prompt: p.join('\n\n'), imgs };
+  }
+  function buildRevisePrompt(instr) {
+    return { prompt: [$('pedagogy').textContent.trim(), '---', 'Here is the current worksheet as JSON Lines:', current.jsonl.trim(), '---', `Revise it as follows:\n${instr}`, 'Return the COMPLETE revised worksheet as JSON Lines in the same format. Keep everything the request does not ask you to change.'].join('\n\n'), imgs: [] };
+  }
+
+  // ---------------- generation ----------------
+  let sample = null, ctl = null, busy = false;
+  const genBtn = $('genBtn'), stopBtn = $('stopBtn'), status = $('status');
+  const ERR = {
+    not_granted: 'Claude access was not allowed for this page. Reload to be asked again.',
+    sampling_disabled: 'Claude is not available on this account.',
+    rate_limited: 'Usage limit reached for now. Try again in a little while.',
+    session_expired: 'Your Claude session expired. Sign in again, then retry.',
+    prompt_too_large: 'The source material is too long. Remove a file or upload a shorter extract.',
+    image_rejected: 'One of the images could not be used. Try a different file.',
+    images_unavailable: 'Images can’t be sent from this view. Use text or a text-based PDF.',
+    refused: 'Claude declined this request. Rephrase the topic or instructions.',
+    empty_completion: 'Claude returned nothing. Try a shorter length.',
+    upstream_error: 'The connection dropped. Generate again to retry.'
+  };
+  function say(msg, err) { status.textContent = msg; status.classList.toggle('err', !!err); }
+  function setBusy(b) {
+    busy = b; genBtn.disabled = b || !sample; $('reviseBtn').disabled = b || !sample;
+    genBtn.textContent = b ? 'Writing…' : 'Generate worksheet'; stopBtn.hidden = !b;
+  }
+
+  async function run({ prompt, imgs }, label) {
+    ctl = new AbortController();
+    setBusy(true); say(`${label}… Claude plans the sheet first, so the first page can take a minute.`);
+    $('exampleTag').hidden = true; $('revise').hidden = true;
+    const prev = current;
+    mount([], { pending: true });
+    let latest = '', timer = null;
+    const flush = () => {
+      timer = null;
+      const { blocks } = parseJSONL(latest, false);
+      const secs = blocks.filter((b) => b.t === 'section');
+      mount(blocks, { pending: true }); applyCopy();
+      say(`${label}… ${blocks.length} blocks${secs.length ? ` · section ${secs.length}: ${secs[secs.length - 1].title}` : ''}`);
+    };
+    const opts = { signal: ctl.signal, cache: false, modelTier: document.querySelector('input[name="tier"]:checked').value, onText: ({ text }) => { latest = text; if (!timer) timer = setTimeout(flush, 600); } };
+    if (imgs.length && imgLimits) opts.images = imgs.slice(0, imgLimits.maxCount);
+    try {
+      const { text, truncated } = await sample(prompt, opts);
+      clearTimeout(timer);
+      const { blocks, bad } = parseJSONL(text, true);
+      if (!blocks.length) { say('Claude replied in an unexpected format. Generate again.', true); current = prev; mount(prev.blocks); }
+      else {
+        setCurrent(text, false); saveRecent(text, blocks);
+        say(truncated ? 'Done, but the sheet was cut short. Choose a shorter length or revise to continue.' : `Done · ${blocks.length} blocks${bad ? ` (${bad} unreadable line${bad > 1 ? 's' : ''} skipped)` : ''}.`, truncated);
+      }
+    } catch (err) {
+      clearTimeout(timer);
+      const partial = err && err.text ? parseJSONL(err.text, true).blocks : [];
+      if (partial.length && err.code !== 'refused') { setCurrent(err.text, false); }
+      else { current = prev; $('exampleTag').hidden = !prev.example; mount(prev.blocks); }
+      if (err && err.code === 'cancelled') say(partial.length ? 'Stopped. Kept what was written so far.' : 'Stopped.');
+      else say(ERR[err && err.code] || ERR.upstream_error, true);
+      if (err && ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(err.code)) sample = null;
+    } finally { setBusy(false); applyCopy(); $('revise').hidden = current.example || !sample; }
+  }
+
+  $('builder').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!sample || busy) return;
+    if (!$('topic').value.trim() && !$('paste').value.trim() && !files.some((f) => f.kind === 'text' || f.kind === 'images')) { say('Add topics, a file or a pasted transcript first.', true); $('topic').focus(); return; }
+    if (files.some((f) => f.kind === 'pending')) { say('Still reading your files. Try again in a moment.', true); return; }
+    run(buildPrompt(), 'Writing the worksheet');
+  });
+  $('reviseBtn').addEventListener('click', () => {
+    const instr = $('reviseText').value.trim();
+    if (!instr) { $('reviseText').focus(); return; }
+    if (!sample || busy || current.example) return;
+    run(buildRevisePrompt(instr), 'Revising');
+  });
+  stopBtn.addEventListener('click', () => ctl && ctl.abort());
+
+  // ---------------- recent sheets ----------------
+  function saveRecent(jsonl, blocks) {
+    const cov = blocks.find((b) => b.t === 'cover');
+    const title = (cov && cov.title) || ($('topic').value.trim() || 'Worksheet');
+    const list = ls.get('mis.recent', []).filter((r) => r.jsonl !== jsonl);
+    list.unshift({ title, ts: Date.now(), jsonl });
+    while (list.length > 8 && !ls.set('mis.recent', list.slice(0, 8))) list.pop();
+    ls.set('mis.recent', list.slice(0, 8));
+    renderRecent();
+  }
+  function renderRecent() {
+    const list = ls.get('mis.recent', []);
+    const sel = $('recent');
+    sel.hidden = !list.length;
+    sel.innerHTML = `<option value="">Recent worksheets</option><option value="example">Example: Handshake sheet</option>` + list.map((r, i) => `<option value="${i}">${esc(r.title)} · ${new Date(r.ts).toLocaleDateString()}</option>`).join('');
+  }
+  $('recent').addEventListener('change', (e) => {
+    const v = e.target.value; e.target.value = '';
+    if (v === 'example') { setCurrent($('example').textContent, true); applyCopy(); return; }
+    const r = ls.get('mis.recent', [])[+v]; if (r) { setCurrent(r.jsonl, false); applyCopy(); }
+  });
+
+  // ---------------- LaTeX export ----------------
+  const TEX_ESC = { '\\': '\\textbackslash{}', '&': '\\&', '%': '\\%', '#': '\\#', '_': '\\_', '{': '\\{', '}': '\\}', '$': '\\$', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}' };
+  const UNI = { '→': '$\\to$', '←': '$\\leftarrow$', '↔': '$\\leftrightarrow$', '⇒': '$\\Rightarrow$', '⇔': '$\\Leftrightarrow$', '×': '$\\times$', '≤': '$\\le$', '≥': '$\\ge$', '≠': '$\\ne$', '∈': '$\\in$', '∉': '$\\notin$', '∞': '$\\infty$', '·': '$\\cdot$', '…': '\\ldots{}', '≈': '$\\approx$', '¬': '$\\neg$', '∧': '$\\wedge$', '∨': '$\\vee$', '∀': '$\\forall$', '∃': '$\\exists$', '✓': '$\\checkmark$', '−': '$-$', '°': '$^\\circ$', '√': '$\\surd$', '½': '$\\tfrac12$', 'π': '$\\pi$' };
+  const texEsc = (s) => String(s == null ? '' : s).replace(/[\\&%#_{}$~^]/g, (c) => TEX_ESC[c]).replace(/[→←↔⇒⇔×≤≥≠∈∉∞·…≈¬∧∨∀∃✓−°√½π]/g, (c) => UNI[c]);
+  function tex(s, mode) {
+    s = String(s == null ? '' : s);
+    const blanks = [], maths = [];
+    s = s.replace(/\[\[([\s\S]*?)\]\]/g, (_, a) => { blanks.push(a); return '\u0001B' + (blanks.length - 1) + '\u0001'; });
+    s = s.replace(MATH_RE, (m) => { maths.push(m); return '\u0001M' + (maths.length - 1) + '\u0001'; });
+    s = texEsc(s)
+      .replace(/\*\*([^*]+?)\*\*/g, '\\textbf{$1}')
+      .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1\\emph{$2}')
+      .replace(/`([^`]+?)`/g, '\\texttt{$1}')
+      .replace(/"([^"]+)"/g, "``$1''");
+    s = s.replace(/\u0001M(\d+)\u0001/g, (_, i) => maths[+i]);
+    s = s.replace(/\u0001B(\d+)\u0001/g, (_, i) => {
+      const a = blanks[+i]; const empty = !String(a).trim();
+      if (mode === 'cell') return empty ? '' : `\\cellblank{${tex(a)}}`;
+      return empty ? '\\blank{\\hspace{6em}}' : `\\blank{${tex(a)}}`;
+    });
+    return s;
+  }
+  const texCode = (l) => String(l).split(/\[\[([\s\S]*?)\]\]/).map((p, i) => {
+    const e = p.replace(/[\\&%#_{}$~^]/g, (c) => TEX_ESC[c]).replace(/ /g, '~').replace(/'/g, '\\textquotesingle{}');
+    return i % 2 ? `\\blank{${e || '\\hspace{6em}'}}` : e;
+  }).join('') || '~';
+  const TEX_KIND = {
+    reflection: ['wsGreen', 'wsGreenBg'], why: ['wsNavy', 'wsNavyBg'], story: ['wsNavy', 'wsNavyBg'], bigidea: ['wsOrange', 'wsOrangeBg'], insight: ['wsGreen', 'wsGreenBg'],
+    discovery: ['wsNavy', 'wsCream'], definition: ['wsGreen', 'wsGreenBg'], theorem: ['wsGreen', 'wsGreenBg'], rule: ['wsGreen', 'wsGreenBg'], terminology: ['wsOrange', 'wsOrangeBg'],
+    remark: ['wsGreen', 'wsGreenBg'], strange: ['wsNavy', 'wsNavyBg'], exercise: ['black', 'wsGrey'], quick: ['black', 'wsGrey'], question: ['wsBlue', 'wsBlueBg'],
+    application: ['wsNavy', 'wsNavyBg'], hint: ['black', 'white'], warning: ['wsOrange', 'wsOrangeBg']
+  };
+  function texResp(p) {
+    const r = p.resp || (p.answer && !/\[\[/.test(p.q || '') ? { type: 'lines', n: 2 } : { type: 'none' });
+    const model = p.answer ? `\\model{${tex(p.answer)}}\n` : '';
+    switch (r.type) {
+      case 'lines': return model + `\\answerlines{${Math.max(1, Math.min(14, +r.n || 2))}}\n`;
+      case 'box': return model + `\\drawbox{${(Math.max(2, Math.min(20, +r.h || 4)) * 0.75).toFixed(2)}cm}{${tex(r.label || '')}}\n`;
+      case 'choice': {
+        const ans = String(r.answer != null ? r.answer : (p.answer || '')).trim().toLowerCase();
+        return `\\par\\smallskip\\centerline{${(r.options || ['Yes', 'No']).map((o) => `${String(o).trim().toLowerCase() === ans ? '\\ansbox' : '$\\square$'}~${tex(o)}`).join('\\qquad ')}}\n`;
+      }
+      default: return /\[\[/.test(p.q || '') ? '' : model;
+    }
+  }
+  function texGraph(b) {
+    const { nodes, edges, cx, cy } = graphGeom(b);
+    const idx = Object.fromEntries(nodes.map((n, i) => [n.id, i]));
+    const lab = (id) => /^[A-Za-z0-9_']+$/.test(id) ? `$${id}$` : texEsc(id);
+    let t = `\\begin{center}\\begin{tikzpicture}[x=0.85cm,y=-0.85cm]\n`;
+    nodes.forEach((n, i) => {
+      const vx = n.x - cx, vy = n.y - cy;
+      const pos = Math.abs(vx) > Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : (vy > 0 ? 'below' : 'above');
+      t += `  \\node[circle,fill,inner sep=1.7pt,label={${pos}:${lab(n.id)}}] (n${i}) at (${n.x},${n.y}) {};\n`;
+    });
+    edges.forEach((e) => {
+      if (!(e.a in idx) || !(e.b in idx)) return;
+      const bend = e.bend ? `[bend ${(e.bend * (e.flip ? -1 : 1)) > 0 ? 'left' : 'right'}=${Math.round(Math.abs(e.bend) * 25)}]` : '';
+      const lbl = e.w ? ` node[midway,fill=white,inner sep=1pt,font=\\small] {${texEsc(e.w)}}` : '';
+      if (e.a === e.b) t += `  \\draw (n${idx[e.a]}) edge[loop above] (n${idx[e.a]});\n`;
+      else t += `  \\draw${b.directed ? '[-{Stealth[length=2.2mm]}]' : ''} (n${idx[e.a]}) to${bend}${lbl} (n${idx[e.b]});\n`;
+    });
+    return t + `\\end{tikzpicture}${b.caption ? `\\\\[2pt]\\small Figure: ${tex(b.caption)}` : ''}\\end{center}\n`;
+  }
+  function texBlock(b) {
+    switch (b.t) {
+      case 'section': return `\\section{${tex(b.title)}}\n`;
+      case 'subsection': return `\\subsection*{${tex(b.title)}}\n`;
+      case 'text': return `${tex(b.md || b.text || '')}\\par\\medskip\n`;
+      case 'list': { const env = b.ordered ? 'enumerate' : 'itemize'; return `\\begin{${env}}\n${(b.items || []).map((i) => `  \\item ${tex(i)}`).join('\n')}\n\\end{${env}}\n`; }
+      case 'quote': return `\\begin{center}\\begin{tcolorbox}[colback=black,coltext=white,width=0.8\\linewidth,halign=center,arc=0pt]${tex(b.text)}\\\\[6pt]\\textit{--- ${texEsc(b.by || '')} ---}\\end{tcolorbox}\\end{center}\n`;
+      case 'prompt': return `\\par\\noindent{}${b.label ? `\\textbf{${tex(b.label)}} ` : ''}${tex(b.q)}\\par\n${texResp(b)}\\medskip\n`;
+      case 'table': {
+        const hs = b.headers || [], rows = b.rows || []; const n = Math.max(hs.length, ...rows.map((r) => (r || []).length), 1);
+        const w = (0.92 / n).toFixed(3);
+        let t = `\\par\\medskip\\noindent\\begin{minipage}{\\linewidth}\\centering ${b.caption ? `Table: \\textbf{${tex(b.caption)}}\\\\[4pt]` : ''}{\\renewcommand{\\arraystretch}{1.9}\\begin{tabular}{|${`>{\\centering\\arraybackslash}p{${w}\\linewidth}|`.repeat(n)}}\\hline\n`;
+        if (hs.length) t += hs.map((h) => `\\textbf{${tex(h)}}`).join(' & ') + ' \\\\ \\hline\n';
+        rows.forEach((r) => { const cells = (r || []).map((c) => /^\(Try to fill this box\)$/i.test(String(c).trim()) ? `\\textit{\\small (Try to fill this box)}` : tex(c, 'cell')); while (cells.length < n) cells.push(''); t += cells.join(' & ') + ' \\\\ \\hline\n'; });
+        return t + `\\end{tabular}}\\end{minipage}\\par\\medskip\n`;
+      }
+      case 'pairs': return `${b.lead ? `\\noindent\\textbf{${tex(b.lead)}}\\par` : ''}\\begin{center}\\begin{tabular}{r c l}\n${(b.rows || []).map((r) => `${tex(r[0])} & $\\leftrightarrow$ & ${tex(r[1])} \\\\[4pt]`).join('\n')}\n\\end{tabular}\\end{center}\n`;
+      case 'derive': return `${b.lead ? `${tex(b.lead)}\\par` : ''}\\begin{center}\\begin{tabular}{r l}\n & ${tex(b.start || '')} \\\\[6pt]\n${(b.steps || []).map((s) => `$=$ & ${tex(s)} \\\\[6pt]`).join('\n')}\n\\end{tabular}\\end{center}\n`;
+      case 'code': return `\\begin{tcolorbox}[colback=white,colframe=black,boxrule=0.5pt,arc=1pt]\\ttfamily\\small\n${(b.lines || String(b.src || '').split('\n')).map(texCode).join('\\\\\n')}\n\\end{tcolorbox}\n`;
+      case 'graph': return texGraph(b);
+      case 'flow': { const items = b.items || [], via = [].concat(b.via || []); return `\\begin{center}${items.map((it, i) => `\\fbox{\\Large ${tex(it)}}${i < items.length - 1 ? ` $\\xrightarrow{\\text{${texEsc(via[i] || via[0] || '')}}}$ ` : ''}`).join('')}\\end{center}\n`; }
+      case 'game': return `\\par\\medskip\\noindent\\textbf{\\large Win The Game!}\\par\\noindent\\textbf{Objective:} ${tex(b.objective)}\\par${b.rules ? `\\noindent\\textbf{Rules:} ${tex(b.rules)}\\par` : ''}${b.strategy ? `\\noindent\\textbf{Strategy:} ${tex(b.strategy)}\\par` : ''}\n${b.answer ? `\\model{${tex(b.answer)}}\n` : ''}\\answerlines{${Math.max(2, Math.min(14, +b.lines || 5))}}\n`;
+      case 'box': {
+        const k = TEX_KIND[b.kind] || TEX_KIND.remark; const title = tex(b.title || (KIND[b.kind] || KIND.remark)[1]);
+        return `\\begin{tcolorbox}[enhanced,breakable,colback=${k[1]},colframe=${k[0]},coltitle=white,fonttitle=\\bfseries,title={${title}},arc=1.2mm,boxrule=0.8pt${b.kind === 'discovery' ? ',fontupper=\\bfseries' : ''}]\n${b.kids.map(texBlock).join('')}\\end{tcolorbox}\n`;
+      }
+      case 'cols': return `\\par\\noindent\\begin{minipage}[t]{0.475\\linewidth}\n\\centerline{\\fbox{\\large\\textbf{${tex(b.left || '')}}}}\\medskip\n${b.cols[0].map(texBlock).join('')}\\end{minipage}\\hfill\\vrule\\hfill\\begin{minipage}[t]{0.475\\linewidth}\n\\centerline{\\fbox{\\large\\textbf{${tex(b.right || '')}}}}\\medskip\n${b.cols[1].map(texBlock).join('')}\\end{minipage}\\par\\medskip\n`;
+      default: return '';
+    }
+  }
+  function toLatex(blocks, teacher) {
+    const { cover, pages } = buildTree(blocks);
+    const title = cover ? cover.title : 'Worksheet', course = srcOf(cover);
+    let t = `% Generated by Slate. Compile with pdfLaTeX (or XeLaTeX if the sheet has non-Latin text).
+% Set \\teachertrue for the copy with solutions filled in.
+\\documentclass[11pt]{article}
+\\usepackage[a4paper,margin=2.2cm,headheight=14pt]{geometry}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage{amsmath,amssymb,graphicx,array,enumitem,fancyhdr,textcomp}
+\\usepackage[dvipsnames]{xcolor}
+\\usepackage[most]{tcolorbox}
+\\usepackage{tikz}
+\\usetikzlibrary{arrows.meta}
+\\newif\\ifteacher
+${teacher ? '\\teachertrue' : '\\teacherfalse'}
+\\definecolor{wsGreen}{HTML}{0B7A2E}\\definecolor{wsGreenBg}{HTML}{EFFAF1}
+\\definecolor{wsNavy}{HTML}{14287A}\\definecolor{wsNavyBg}{HTML}{EFF1FB}
+\\definecolor{wsBlue}{HTML}{1565C0}\\definecolor{wsBlueBg}{HTML}{EEF3FC}
+\\definecolor{wsOrange}{HTML}{B85C00}\\definecolor{wsOrangeBg}{HTML}{FFF8EC}
+\\definecolor{wsCream}{HTML}{FFFBE6}\\definecolor{wsGrey}{HTML}{F2F2F2}\\definecolor{wsAns}{HTML}{C0262D}
+\\newcommand{\\blank}[1]{\\ifteacher\\underline{\\textcolor{wsAns}{#1}}\\else\\underline{\\hphantom{#1}\\hspace{1.5em}}\\fi}
+\\newcommand{\\cellblank}[1]{\\ifteacher\\textcolor{wsAns}{#1}\\else\\phantom{#1}\\fi}
+\\newcommand{\\model}[1]{\\ifteacher\\par{\\color{wsAns}\\itshape #1}\\par\\fi}
+\\newcommand{\\ansbox}{\\ifteacher\\textcolor{wsAns}{$\\boxtimes$}\\else$\\square$\\fi}
+\\newcommand{\\answerlines}[1]{\\par\\foreach \\i in {1,...,#1}{\\vspace{0.7cm}\\noindent\\rule{\\linewidth}{0.4pt}\\par}\\medskip}
+\\newcommand{\\drawbox}[2]{\\par\\smallskip\\noindent\\fbox{\\begin{minipage}[t][#1][t]{\\dimexpr\\linewidth-2\\fboxsep-2\\fboxrule\\relax}\\textit{#2}\\end{minipage}}\\par\\medskip}
+\\setlength{\\parindent}{0pt}
+\\pagestyle{fancy}\\fancyhf{}\\lhead{\\textsc{${tex(title)}}}\\rhead{${tex(course)}}\\cfoot{\\thepage}
+\\begin{document}
+`;
+    if (cover) {
+      t += `\\begin{titlepage}\\centering\n{\\small\\scshape Slate \\textperiodcentered{} make it stick}\\par\\vspace{1.5cm}\n`;
+      t += `{\\huge\\bfseries ${tex(cover.title)}}\\par\\vspace{0.3cm}${srcOf(cover) ? `{\\large\\itshape Based on ${tex(srcOf(cover))}}\\par` : ''}\\vspace{0.9cm}\n\\raggedright\n`;
+      if ((cover.learn || []).length) t += `\\textbf{\\large In this worksheet you will rebuild:}\n\\begin{itemize}\n${cover.learn.map((l) => `  \\item ${tex(l)}`).join('\n')}\n\\end{itemize}\n`;
+      if (cover.quote && cover.quote.text) t += `\\begin{center}\\begin{tcolorbox}[width=0.85\\linewidth,colback=black,coltext=white,halign=center,arc=0pt]\\sffamily ${tex(cover.quote.text)}\\\\[8pt]\\itshape --- ${texEsc(cover.quote.by || '')} ---\\end{tcolorbox}\\end{center}\n`;
+      t += `\\vfill\\noindent\\textbf{How to use this sheet.} Work with a pen. Have a go at every blank and box before you look anything up, even if you are unsure. When you finish a section, check yourself against the solutions copy.\n\\end{titlepage}\n`;
+    }
+    pages.forEach((pg, i) => { if (i) t += `\\newpage\n`; t += pg.map(texBlock).join(''); });
+    return t + `\\end{document}\n`;
+  }
+
+  // ---------------- downloads ----------------
+  let downloads = null;
+  const exportStatus = { set textContent(v) { $('exportStatus').textContent = v; $('endStatus').textContent = v; } };
+  const slug = (s) => (s || 'worksheet').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'worksheet';
+  const curTitle = () => { const c = current.blocks.find((b) => b.t === 'cover'); return (c && c.title) || 'worksheet'; };
+  async function save(filename, data) {
+    if (!downloads) return;
+    try { await downloads.save({ filename, data }); exportStatus.textContent = `Saved ${filename}.`; }
+    catch (e) { exportStatus.textContent = e && e.code === 'declined' ? '' : 'Download is not available here. Use Copy LaTeX instead.'; }
+  }
+  async function copy(text, label) {
+    try { await navigator.clipboard.writeText(text); exportStatus.textContent = `${label} copied.`; }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); exportStatus.textContent = `${label} copied.`; } catch (_) { exportStatus.textContent = 'Copy was blocked in this view.'; }
+      ta.remove();
+    }
+  }
+  const teacherOn = () => $('copy-teacher').checked;
+  $('cpTex').addEventListener('click', () => copy(toLatex(current.blocks, teacherOn()), teacherOn() ? 'LaTeX with solutions' : 'Worksheet LaTeX'));
+  async function dlZip() {
+    try {
+      exportStatus.textContent = 'Building the Overleaf project…';
+      await loadScript('zip', 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      const zip = new window.JSZip();
+      zip.file('worksheet.tex', toLatex(current.blocks, false));
+      zip.file('with-solutions.tex', toLatex(current.blocks, true));
+      zip.file('README.txt', 'Upload this zip to Overleaf (New Project > Upload Project).\nworksheet.tex has empty blanks to attempt; with-solutions.tex has the answers filled in red.\nBoth compile with pdfLaTeX.\n');
+      await save(`${slug(curTitle())}-overleaf.zip`, await zip.generateAsync({ type: 'blob' }));
+    } catch (e) { exportStatus.textContent = 'Could not build the zip. Use Copy LaTeX instead.'; }
+  }
+  function dlHtml(teacher) {
+    const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(curTitle())}${teacher ? ' (with solutions)' : ''}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=STIX+Two+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap">
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\\\(','\\\\)']],processEscapes:true},svg:{fontCache:'global'}};<\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async><\/script>
+<style>body{margin:0;background:#e9e9e9;padding:24px 12px}@media print{body{background:#fff;padding:0}@page{size:A4;margin:18mm}}${$('sheetcss').textContent}</style></head>
+<body><div class="ws${teacher ? ' teacher' : ''}">${sheetHTML(current.blocks)}</div></body></html>`;
+    save(`${slug(curTitle())}${teacher ? '-with-solutions' : ''}.html`, html);
+  }
+  async function makePdf(teacher) {
+    await loadScript('h2p', 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+    const host = document.createElement('div');
+    host.style.cssText = 'position:absolute;left:0;top:0;width:760px;height:0;overflow:hidden;opacity:0;pointer-events:none';
+    host.innerHTML = `<div class="ws pdf${teacher ? ' teacher' : ''}">${sheetHTML(current.blocks)}</div>`;
+    document.body.appendChild(host);
+    try {
+      if (window.MathJax && MathJax.startup) { await MathJax.startup.promise; await MathJax.typesetPromise([host]); }
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      prepForPdf(host);
+      const opt = {
+        margin: [14, 13, 14, 13],
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], before: '.ws.pdf .page + .page', avoid: ['.cbox', 'table', 'figure', '.prompt', '.derive', 'pre', '.game', 'h2', 'h3', '.qcard', '.pairs', 'li', 'p'] }
+      };
+      return await window.html2pdf().set(opt).from(host.firstElementChild).outputPdf('blob');
+    } finally { host.remove(); }
+  }
+  function prepForPdf(root) {
+    // Ruled lines: the PDF renderer can't draw repeating gradients, so use real rules.
+    root.querySelectorAll('.lines').forEach((el) => {
+      const n = parseInt(el.style.getPropertyValue('--n'), 10) || 2;
+      const col = el.closest('.cbox') ? '#b8b8b8' : '#222';
+      el.style.background = 'none'; el.style.height = 'auto';
+      el.innerHTML = Array.from({ length: n }, () => `<div style="height:2.05em;border-bottom:1px solid ${col}"></div>`).join('');
+    });
+    root.querySelectorAll('mjx-assistive-mml').forEach((el) => el.remove());
+    // MathJax SVG: swap each formula for an image of itself, which renders exactly.
+    root.querySelectorAll('mjx-container > svg').forEach((svg) => {
+      const r = svg.getBoundingClientRect();
+      if (!r.width) return;
+      const cs = getComputedStyle(svg);
+      const color = getComputedStyle(svg.parentNode).color;
+      const clone = svg.cloneNode(true);
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      clone.setAttribute('width', r.width + 'px'); clone.setAttribute('height', r.height + 'px');
+      let xml = new XMLSerializer().serializeToString(clone).replace(/currentColor/g, color);
+      const img = new Image();
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+      img.style.cssText = `width:${r.width}px;height:${r.height}px;vertical-align:${cs.verticalAlign};display:inline-block`;
+      svg.replaceWith(img);
+    });
+  }
+  async function dlPdf(teacher) {
+    if (!current.blocks.length) return;
+    const btns = ['endWs', 'endSol', 'dlHtml'].map($);
+    btns.forEach((b) => { b.disabled = true; });
+    exportStatus.textContent = `Making the PDF${teacher ? ' with solutions' : ''}… this takes a few seconds.`;
+    try { const blob = await makePdf(teacher); await save(`${slug(curTitle())}${teacher ? '-with-solutions' : ''}.pdf`, blob); }
+    catch (e) { exportStatus.textContent = 'Could not make the PDF. Use the Overleaf project instead.'; }
+    finally { btns.forEach((b) => { b.disabled = false; }); }
+  }
+  $('dlZip').addEventListener('click', dlZip);
+  $('dlHtml').addEventListener('click', () => dlPdf(teacherOn()));
+  $('endWs').addEventListener('click', () => dlPdf(false));
+  $('endSol').addEventListener('click', () => dlPdf(true));
+  $('endZip').addEventListener('click', dlZip);
+  $('endTex').addEventListener('click', () => copy(toLatex(current.blocks, teacherOn()), teacherOn() ? 'LaTeX with solutions' : 'Worksheet LaTeX'));
+  function syncEndbar() {
+    ['endWs', 'endSol', 'endZip'].forEach((id) => { $(id).hidden = !downloads; });
+    $('endTex').classList.toggle('primary', !downloads); $('endTex').classList.toggle('ghost', !!downloads);
+    $('endHint').textContent = downloads ? 'A4 PDFs, ready to print. The Overleaf project gives you editable LaTeX.' : 'Downloads aren’t available in this view. Copy the LaTeX and paste it into Overleaf to get a PDF.';
+  }
+  syncEndbar();
+
+  async function explainNoClaude() {
+    const n = $('notice');
+    let st = 'unknown', perms = null;
+    try { perms = await window.claude.use('permissions'); if (perms) st = await perms.state('sample'); } catch (e) {}
+    if (st === 'denied') {
+      n.innerHTML = 'Claude access is switched off for this page on this account. <button type="button" class="btn ghost small" id="permBtn">Open permissions</button>';
+      $('permBtn').addEventListener('click', async () => {
+        try { await perms.manage(); } catch (e) { n.textContent = 'Open the Permissions menu at the top of this artifact, switch Claude on, then reload.'; return; }
+        const now = await perms.state('sample').catch(() => 'unknown');
+        n.textContent = now === 'granted' || now === 'prompt' ? 'Access switched on. Reload the page to start generating.' : 'Claude access is still off. Switch it on in the Permissions menu, then reload.';
+      });
+    } else if (st === 'prompt' || st === 'granted') {
+      n.textContent = 'Claude did not finish connecting. Reload the page to try again.';
+    } else {
+      n.textContent = 'This Claude account can’t run Claude from shared pages (code: ' + st + '). This is usually a plan or organization setting on that account. Generation works on accounts where it is allowed; the worksheet downloads work for everyone.';
+    }
+  }
+
+  (function typeIt() {
+    const el = $('typed'); if (!el) return;
+    const LINES = ['I see, I forget.', 'I hear, I remember.', 'I do, I understand.'];
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { el.innerHTML = LINES.join('<br>'); return; }
+    let li = 0, ci = 0, out = [];
+    const go = () => {
+      out[li] = LINES[li].slice(0, ++ci);
+      el.innerHTML = out.map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('<br>');
+      if (ci < LINES[li].length) return setTimeout(go, 40);
+      if (++li < LINES.length) { ci = 0; return setTimeout(go, 520); }
+    };
+    setTimeout(go, 400);
+  })();
+
+  // ---------------- web mode: our own API instead of the Claude runtime ----------------
+  function webSample() {
+    const toB64 = (blob) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob); });
+    const fail = (code, text) => Object.assign(new Error(code), { code, text });
+    const fn = async (prompt, opts = {}) => {
+      const images = [];
+      for (const b of (opts.images || []).slice(0, 6)) images.push({ type: b.type || 'image/jpeg', data: await toB64(b) });
+      let res, text = '', truncated = false;
+      try {
+        res = await fetch('/api/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, signal: opts.signal,
+          body: JSON.stringify({ prompt, images, tier: opts.modelTier === 'complex' ? 'complex' : 'default' }) });
+      } catch (e) { throw fail(e && e.name === 'AbortError' ? 'cancelled' : 'upstream_error'); }
+      if (!res.ok) {
+        const map = { 413: 'prompt_too_large', 429: 'rate_limited' };
+        throw fail(map[res.status] || 'upstream_error');
+      }
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+      try {
+        for (;;) {
+          const { value, done } = await reader.read(); if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let i;
+          while ((i = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+            if (!line.startsWith('data:')) continue;
+            let ev; try { ev = JSON.parse(line.slice(5)); } catch (e) { continue; }
+            if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') { text += ev.delta.text; opts.onText && opts.onText({ text, delta: ev.delta.text }); }
+            else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason === 'max_tokens') truncated = true;
+            else if (ev.type === 'error') throw fail(ev.error && ev.error.type === 'overloaded_error' ? 'rate_limited' : 'upstream_error', text);
+          }
+        }
+      } catch (e) { if (e && e.code) throw e; throw fail(e && e.name === 'AbortError' ? 'cancelled' : 'upstream_error', text); }
+      if (!text.trim()) throw fail('empty_completion');
+      return { text, truncated };
+    };
+    fn.limits = async () => ({ images: { maxCount: 6 } });
+    return fn;
+  }
+  const webDownloads = {
+    async save({ filename, data }) {
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+  };
+
+  // ---------------- boot ----------------
+  setCurrent($('example').textContent, true);
+  renderRecent();
+  setBusy(false);
+  (async () => {
+    let s, d;
+    if (ON_WEB) { s = webSample(); d = webDownloads; $('notice').textContent = 'Free while Slate is in beta. Long worksheets take a minute or two to write.'; }
+    else [s, d] = await Promise.all([window.claude.use('sample'), window.claude.use('downloads')]);
+    sample = s; downloads = d;
+    if (!sample) await explainNoClaude();
+    else {
+      try { const lim = await sample.limits(); imgLimits = lim && lim.images ? lim.images : null; } catch (e) { imgLimits = null; }
+      if (imgLimits) $('dropHint').textContent = 'Book chapter, slides, notes or a lecture transcript: PDF (scans too), TXT, VTT, SRT, Markdown, LaTeX or photos.';
+    }
+    if (downloads) { $('dlZip').hidden = false; $('dlHtml').hidden = false; }
+    syncEndbar();
+    setBusy(false);
+  })();
+})();
+</script>
+</body>
+</html>

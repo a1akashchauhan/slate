@@ -1,0 +1,6 @@
+{
+  "name": "slate",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" }
+}
