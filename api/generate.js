@@ -1,16 +1,22 @@
-// Slate: server-side proxy to the Anthropic Messages API.
-// Keeps the API key on the server, fixes the model and token budget, and streams the reply back.
+// Slate: server-side proxy to the model.
+// Keeps the API key on the server, fixes the model and token budget, and streams the reply back
+// in one simple event format the page understands, whichever provider is behind it.
+//
+// PROVIDER=gemini (default, free tier) needs GEMINI_API_KEY.
+// PROVIDER=anthropic needs ANTHROPIC_API_KEY.
 
+const PROVIDER = (process.env.PROVIDER || 'gemini').toLowerCase();
 const MODELS = {
-  default: process.env.SLATE_MODEL || 'claude-sonnet-5-5',
-  complex: process.env.SLATE_MODEL_COMPLEX || 'claude-opus-5-5',
+  gemini: { default: process.env.SLATE_MODEL || 'gemini-3.8-flash', complex: process.env.SLATE_MODEL_COMPLEX || process.env.SLATE_MODEL || 'gemini-3.8-flash' },
+  anthropic: { default: process.env.SLATE_MODEL || 'claude-sonnet-5-5', complex: process.env.SLATE_MODEL_COMPLEX || 'claude-opus-5-5' },
 };
 const MAX_TOKENS = parseInt(process.env.SLATE_MAX_TOKENS || '32000', 10);
 const MAX_PROMPT_CHARS = 400_000;
 const MAX_IMAGES = 6;
 const PER_HOUR = parseInt(process.env.SLATE_PER_HOUR || '12', 10);
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-// Best-effort limit per warm instance. The real ceiling is the monthly spend limit in the Anthropic Console.
+// Best-effort limit per warm instance. The real ceilings are the provider's own quotas or spend limits.
 const hits = new Map();
 function limited(ip) {
   const now = Date.now();
@@ -21,11 +27,112 @@ function limited(ip) {
 }
 
 const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });
+const enc = new TextEncoder();
+const sse = (obj) => enc.encode(`data: ${JSON.stringify(obj)}\n\n`);
+const textEvent = (text) => sse({ type: 'content_block_delta', delta: { type: 'text_delta', text } });
 
-export async function POST(request) {
+function upstreamStatus(status) {
+  if (status === 429 || status === 529 || status === 503) return 429;
+  if (status === 413) return 413;
+  return 502;
+}
+
+// Reads an SSE stream line by line and hands each parsed `data:` JSON object to onEvent.
+async function readSSE(body, onEvent) {
+  const reader = body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim();
+      buf = buf.slice(i + 1);
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
+      try { onEvent(JSON.parse(data)); } catch { /* skip malformed line */ }
+    }
+  }
+}
+
+async function callGemini({ prompt, images, tier }) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return json(500, { error: 'Server is missing GEMINI_API_KEY.' });
+  const model = tier === 'complex' ? MODELS.gemini.complex : MODELS.gemini.default;
+  const parts = images.map((im) => ({ inline_data: { mime_type: im.type, data: im.data } }));
+  parts.push({ text: prompt });
+
+  const upstream = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts }],
+        generationConfig: { maxOutputTokens: MAX_TOKENS, temperature: 0.7 },
+      }),
+    },
+  );
+  if (!upstream.ok || !upstream.body) {
+    const detail = await upstream.text().catch(() => '');
+    console.error('Gemini error', upstream.status, detail.slice(0, 800));
+    return json(upstreamStatus(upstream.status), { error: 'The model could not be reached.' });
+  }
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      let truncated = false;
+      try {
+        await readSSE(upstream.body, (ev) => {
+          if (ev.error) { controller.enqueue(sse({ type: 'error', error: { type: ev.error.status === 'RESOURCE_EXHAUSTED' ? 'overloaded_error' : 'api_error' } })); return; }
+          const cand = ev.candidates && ev.candidates[0];
+          if (!cand) return;
+          for (const p of (cand.content && cand.content.parts) || []) {
+            if (p.thought || typeof p.text !== 'string' || !p.text) continue; // skip model's private reasoning
+            controller.enqueue(textEvent(p.text));
+          }
+          if (cand.finishReason === 'MAX_TOKENS') truncated = true;
+        });
+        if (truncated) controller.enqueue(sse({ type: 'message_delta', delta: { stop_reason: 'max_tokens' } }));
+        controller.enqueue(sse({ type: 'message_stop' }));
+      } catch (e) {
+        console.error('Gemini stream error', e);
+        controller.enqueue(sse({ type: 'error', error: { type: 'api_error' } }));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, { headers: { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform' } });
+}
+
+async function callAnthropic({ prompt, images, tier }) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return json(500, { error: 'Server is missing ANTHROPIC_API_KEY.' });
+  const content = images.map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.type, data: im.data } }));
+  content.push({ type: 'text', text: prompt });
+  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: tier === 'complex' ? MODELS.anthropic.complex : MODELS.anthropic.default,
+      max_tokens: MAX_TOKENS,
+      stream: true,
+      messages: [{ role: 'user', content }],
+    }),
+  });
+  if (!upstream.ok || !upstream.body) {
+    const detail = await upstream.text().catch(() => '');
+    console.error('Anthropic error', upstream.status, detail.slice(0, 800));
+    return json(upstreamStatus(upstream.status), { error: 'The model could not be reached.' });
+  }
+  // Anthropic's stream already uses the event format the page reads.
+  return new Response(upstream.body, { headers: { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform' } });
+}
 
+export async function POST(request) {
   const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
   const origin = request.headers.get('origin') || '';
   if (allowed.length && !allowed.includes(origin)) return json(403, { error: 'Origin not allowed.' });
@@ -39,33 +146,15 @@ export async function POST(request) {
   if (!prompt.trim()) return json(400, { error: 'Empty prompt.' });
   if (prompt.length > MAX_PROMPT_CHARS) return json(413, { error: 'Source material is too long.' });
 
-  const images = Array.isArray(body.images) ? body.images.slice(0, MAX_IMAGES) : [];
-  const content = [];
-  for (const im of images) {
-    const type = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(im && im.type) ? im.type : null;
-    if (type && typeof im.data === 'string') content.push({ type: 'image', source: { type: 'base64', media_type: type, data: im.data } });
+  const images = (Array.isArray(body.images) ? body.images : [])
+    .slice(0, MAX_IMAGES)
+    .filter((im) => im && IMAGE_TYPES.includes(im.type) && typeof im.data === 'string');
+  const tier = body.tier === 'complex' ? 'complex' : 'default';
+
+  try {
+    return PROVIDER === 'anthropic' ? await callAnthropic({ prompt, images, tier }) : await callGemini({ prompt, images, tier });
+  } catch (e) {
+    console.error('Proxy failure', e);
+    return json(502, { error: 'The model could not be reached.' });
   }
-  content.push({ type: 'text', text: prompt });
-
-  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: body.tier === 'complex' ? MODELS.complex : MODELS.default,
-      max_tokens: MAX_TOKENS,
-      stream: true,
-      messages: [{ role: 'user', content }],
-    }),
-  });
-
-  if (!upstream.ok || !upstream.body) {
-    const detail = await upstream.text().catch(() => '');
-    console.error('Anthropic error', upstream.status, detail.slice(0, 500));
-    const status = upstream.status === 429 || upstream.status === 529 ? 429 : upstream.status === 413 ? 413 : 502;
-    return json(status, { error: 'The model could not be reached.' });
-  }
-
-  return new Response(upstream.body, {
-    headers: { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform' },
-  });
 }

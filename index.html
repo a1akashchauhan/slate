@@ -810,7 +810,7 @@ Write blocks in reading order. Close every box_start with box_end and every cols
       n++;
       h += `<section class="page"><div class="runhead"><span>${inl(title)}</span><span>${inl(course)}</span></div><div class="pbody">${pg.map((b) => blockHTML(b)).join('')}${opts.pending && i === pages.length - 1 ? '<p class="pending-dot">Writing…</p>' : ''}</div><div class="pfoot">${n}</div></section>`;
     });
-    if (!h) h = `<section class="page"><div class="empty">${opts.pending ? 'Claude is reading your material and planning the sheet…' : 'Your worksheet will appear here.'}</div></section>`;
+    if (!h) h = `<section class="page"><div class="empty">${opts.pending ? 'Reading your material and planning the sheet…' : 'Your worksheet will appear here.'}</div></section>`;
     return h;
   }
 
@@ -975,8 +975,8 @@ Write blocks in reading order. Close every box_start with box_end and every cols
     prompt_too_large: 'The source material is too long. Remove a file or upload a shorter extract.',
     image_rejected: 'One of the images could not be used. Try a different file.',
     images_unavailable: 'Images can’t be sent from this view. Use text or a text-based PDF.',
-    refused: 'Claude declined this request. Rephrase the topic or instructions.',
-    empty_completion: 'Claude returned nothing. Try a shorter length.',
+    refused: 'The model declined this request. Rephrase the topic or instructions.',
+    empty_completion: 'Nothing came back. Try a shorter length.',
     upstream_error: 'The connection dropped. Generate again to retry.'
   };
   function say(msg, err) { status.textContent = msg; status.classList.toggle('err', !!err); }
@@ -987,7 +987,7 @@ Write blocks in reading order. Close every box_start with box_end and every cols
 
   async function run({ prompt, imgs }, label) {
     ctl = new AbortController();
-    setBusy(true); say(`${label}… Claude plans the sheet first, so the first page can take a minute.`);
+    setBusy(true); say(`${label}… The sheet is planned first, so the first page can take a minute.`);
     $('exampleTag').hidden = true; $('revise').hidden = true;
     const prev = current;
     mount([], { pending: true });
@@ -1005,7 +1005,7 @@ Write blocks in reading order. Close every box_start with box_end and every cols
       const { text, truncated } = await sample(prompt, opts);
       clearTimeout(timer);
       const { blocks, bad } = parseJSONL(text, true);
-      if (!blocks.length) { say('Claude replied in an unexpected format. Generate again.', true); current = prev; mount(prev.blocks); }
+      if (!blocks.length) { say('The reply came back in an unexpected format. Generate again.', true); current = prev; mount(prev.blocks); }
       else {
         setCurrent(text, false); saveRecent(text, blocks);
         say(truncated ? 'Done, but the sheet was cut short. Choose a shorter length or revise to continue.' : `Done · ${blocks.length} blocks${bad ? ` (${bad} unreadable line${bad > 1 ? 's' : ''} skipped)` : ''}.`, truncated);
@@ -1387,7 +1387,7 @@ ${teacher ? '\\teachertrue' : '\\teacherfalse'}
   setBusy(false);
   (async () => {
     let s, d;
-    if (ON_WEB) { s = webSample(); d = webDownloads; $('notice').textContent = 'Free while Slate is in beta. Long worksheets take a minute or two to write.'; }
+    if (ON_WEB) { s = webSample(); d = webDownloads; const mf = $('model-lbl') && $('model-lbl').closest('.field'); if (mf) mf.hidden = true; $('notice').textContent = 'Free beta, powered by Google Gemini. Google may use what you upload to improve its models, so leave out anything private. A long worksheet takes a minute or two.'; }
     else [s, d] = await Promise.all([window.claude.use('sample'), window.claude.use('downloads')]);
     sample = s; downloads = d;
     if (!sample) await explainNoClaude();
