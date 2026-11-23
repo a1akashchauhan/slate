@@ -10,6 +10,7 @@ const MODELS = {
   gemini: { default: process.env.SLATE_MODEL || 'gemini-3.8-flash', complex: process.env.SLATE_MODEL_COMPLEX || process.env.SLATE_MODEL || 'gemini-3.8-flash' },
   anthropic: { default: process.env.SLATE_MODEL || 'claude-sonnet-5-5', complex: process.env.SLATE_MODEL_COMPLEX || 'claude-opus-5-5' },
 };
+const GEMINI_FALLBACKS = (process.env.SLATE_FALLBACK_MODELS || 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite').split(',').map((m) => m.trim()).filter(Boolean);
 const MAX_TOKENS = parseInt(process.env.SLATE_MAX_TOKENS || '32000', 10);
 const MAX_PROMPT_CHARS = 400_000;
 const MAX_IMAGES = 6;
@@ -61,28 +62,31 @@ async function readSSE(body, onEvent) {
 async function callGemini({ prompt, images, tier }) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return json(500, { error: 'Server is missing GEMINI_API_KEY.' });
-  const model = tier === 'complex' ? MODELS.gemini.complex : MODELS.gemini.default;
   const parts = images.map((im) => ({ inline_data: { mime_type: im.type, data: im.data } }));
   parts.push({ text: prompt });
+  const body = JSON.stringify({
+    contents: [{ role: 'user', parts }],
+    generationConfig: { maxOutputTokens: MAX_TOKENS, temperature: 0.7 },
+  });
 
-  const upstream = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts }],
-        generationConfig: { maxOutputTokens: MAX_TOKENS, temperature: 0.7 },
-      }),
-    },
-  );
-  if (!upstream.ok || !upstream.body) {
+  // Free-tier models get overloaded at times, so try the next one on "busy" or "not found".
+  const first = tier === 'complex' ? MODELS.gemini.complex : MODELS.gemini.default;
+  const chain = [first, ...GEMINI_FALLBACKS.filter((m) => m !== first)];
+  let upstream = null, lastStatus = 502, reason = '', used = '';
+  for (const model of chain) {
+    upstream = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
+      { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body },
+    );
+    if (upstream.ok && upstream.body) { used = model; console.log('Gemini model used:', model); break; }
     const detail = await upstream.text().catch(() => '');
-    console.error('Gemini error', upstream.status, detail.slice(0, 800));
-    let reason = '';
-    try { const e = JSON.parse(detail).error || {}; reason = [e.status, e.message].filter(Boolean).join(': ').slice(0, 300); } catch { /* not JSON */ }
-    return json(upstreamStatus(upstream.status), { error: 'The model could not be reached.', upstream: upstream.status, reason });
+    console.error('Gemini error', model, upstream.status, detail.slice(0, 600));
+    lastStatus = upstream.status;
+    try { const e = JSON.parse(detail).error || {}; reason = [model, e.status, e.message].filter(Boolean).join(': ').slice(0, 300); } catch { reason = model + ': ' + upstream.status; }
+    upstream = null;
+    if (![429, 500, 503, 404].includes(lastStatus)) break; // auth or request errors won't be fixed by another model
   }
+  if (!upstream) return json(upstreamStatus(lastStatus), { error: 'The model could not be reached.', upstream: lastStatus, reason });
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -107,7 +111,7 @@ async function callGemini({ prompt, images, tier }) {
       controller.close();
     },
   });
-  return new Response(stream, { headers: { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform' } });
+  return new Response(stream, { headers: { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', 'x-slate-model': used } });
 }
 
 async function callAnthropic({ prompt, images, tier }) {
