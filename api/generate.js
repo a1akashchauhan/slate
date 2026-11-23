@@ -79,7 +79,9 @@ async function callGemini({ prompt, images, tier }) {
   if (!upstream.ok || !upstream.body) {
     const detail = await upstream.text().catch(() => '');
     console.error('Gemini error', upstream.status, detail.slice(0, 800));
-    return json(upstreamStatus(upstream.status), { error: 'The model could not be reached.' });
+    let reason = '';
+    try { const e = JSON.parse(detail).error || {}; reason = [e.status, e.message].filter(Boolean).join(': ').slice(0, 300); } catch { /* not JSON */ }
+    return json(upstreamStatus(upstream.status), { error: 'The model could not be reached.', upstream: upstream.status, reason });
   }
 
   const stream = new ReadableStream({
