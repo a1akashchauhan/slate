@@ -526,6 +526,9 @@ STYLE RULES
 - Use forward references ("A Strange Fact (Hold This Thought): ... We will return to this when we study ...").
 - Be exact. Every blank must have a correct, checkable answer for the solutions copy. Verify every number you put in a table.
 - Keep prose short. The learner should be writing, not reading long paragraphs.
+- Every cell, step or space the learner must fill is a [[blank]] that contains its correct answer, so the solutions copy is complete. Never leave a fill-in table cell empty.
+- History and attributions must be accurate. If you are not sure who did something, or when, tell it as a scenario ("Imagine...") instead of as history.
+- Section and subsection titles never carry their own numbers; the sheet numbers them.
 
 OUTPUT FORMAT: JSON LINES
 Reply with JSON Lines only: one complete JSON object per line, nothing else (no prose, no code fences, no numbering). Every object has a "t" field. The sheet is the sequence of lines.
@@ -534,10 +537,10 @@ Text fields use this inline markup:
 - Math: LaTeX inside $...$ (inline) or $$...$$ (display). In JSON every backslash must be doubled: write "$\\frac{1}{1-x}$", "$p \\to q$", "$\\neg p$".
 - **bold**, *italic*, `code`.
 - A blank for the learner to fill: [[answer]] — the answer is hidden on the worksheet and shown in red on the solutions copy. Example: "Before proof, a statement is called a [[conjecture]]; after proof it becomes a [[theorem]]." The answer may contain math: [[$\\frac{1}{1-z}$]]. Never put a blank inside $...$. Use [[]] only for open-ended blanks with no single answer.
-- Never use \n or \t escapes. Never put a line break inside a string. One paragraph per "text" object.
+- Never write \n or \t inside a string, not even as an escape. Never put a line break inside a string. One paragraph per "text" object; use a "list" block for bullet points.
 
 Block types (exact field names):
-{"t":"cover","title":"...","source":"what this is based on, e.g. the book/lecture/video named by the learner (or empty)","learn":["what the learner will rebuild","..."],"quote":{"text":"a real, correctly attributed quote by someone from the field","by":"Name"}}
+{"t":"cover","title":"...","source":"only the book, lecture or video the learner named; an empty string if they named none (never invent one)","learn":["what the learner will rebuild","..."],"quote":{"text":"a real, correctly attributed quote by someone from the field","by":"Name"}}
 {"t":"section","title":"..."}   (numbered automatically)
 {"t":"subsection","title":"..."}
 {"t":"text","md":"one paragraph"}
@@ -671,16 +674,21 @@ Write blocks in reading order. Close every box_start with box_end and every cols
   // ---------------- inline markup → HTML ----------------
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const MATH_RE = /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$(?:\\\$|[^$])+?\$/g;
+  function clean(s) {
+    // Some models write line breaks as a literal backslash-n; LaTeX commands like \neq are kept.
+    return String(s == null ? '' : s).replace(/\\n(?=\\n)/g, '\n').replace(/\\n(?![a-z])/g, '\n').replace(/\\t(?![a-z])/g, ' ');
+  }
   function inl(s, mode) {
-    s = String(s == null ? '' : s);
+    s = clean(s);
     const blanks = [], maths = [];
     s = s.replace(/\[\[([\s\S]*?)\]\]/g, (_, a) => { blanks.push(a); return '\u0001B' + (blanks.length - 1) + '\u0001'; });
     s = s.replace(MATH_RE, (m) => { maths.push(m); return '\u0001M' + (maths.length - 1) + '\u0001'; });
     s = esc(s)
       .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1<em>$2</em>')
-      .replace(/`([^`]+?)`/g, '<code>$1</code>');
-    s = s.replace(/\u0001M(\d+)\u0001/g, (_, i) => esc(maths[+i]));
+      .replace(/`([^`]+?)`/g, '<code>$1</code>')
+      .replace(/\n/g, '<br>');
+    s = s.replace(/\u0001M(\d+)\u0001/g, (_, i) => esc(maths[+i].replace(/\n/g, ' ')));
     s = s.replace(/\u0001B(\d+)\u0001/g, (_, i) => blankHTML(blanks[+i], mode));
     return s;
   }
@@ -763,7 +771,7 @@ Write blocks in reading order. Close every box_start with box_end and every cols
 
   function blockHTML(b, pending) {
     switch (b.t) {
-      case 'section': return `<h2 class="s-h"><span>${++secNo}</span><span>${inl(b.title)}</span></h2>`;
+      case 'section': return `<h2 class="s-h"><span>${++secNo}</span><span>${inl(String(b.title || '').replace(/^\s*(?:section\s+\d+[.):]?|\d+[.):])\s+/i, ''))}</span></h2>`;
       case 'subsection': return `<h3 class="ss-h">${inl(b.title)}</h3>`;
       case 'text': return `<p>${inl(b.md || b.text || '')}</p>`;
       case 'list': { const tag = b.ordered ? 'ol' : 'ul'; return `<${tag}>${(b.items || []).map((i) => `<li>${inl(i)}</li>`).join('')}</${tag}>`; }
@@ -1063,7 +1071,7 @@ Write blocks in reading order. Close every box_start with box_end and every cols
   const UNI = { '→': '$\\to$', '←': '$\\leftarrow$', '↔': '$\\leftrightarrow$', '⇒': '$\\Rightarrow$', '⇔': '$\\Leftrightarrow$', '×': '$\\times$', '≤': '$\\le$', '≥': '$\\ge$', '≠': '$\\ne$', '∈': '$\\in$', '∉': '$\\notin$', '∞': '$\\infty$', '·': '$\\cdot$', '…': '\\ldots{}', '≈': '$\\approx$', '¬': '$\\neg$', '∧': '$\\wedge$', '∨': '$\\vee$', '∀': '$\\forall$', '∃': '$\\exists$', '✓': '$\\checkmark$', '−': '$-$', '°': '$^\\circ$', '√': '$\\surd$', '½': '$\\tfrac12$', 'π': '$\\pi$' };
   const texEsc = (s) => String(s == null ? '' : s).replace(/[\\&%#_{}$~^]/g, (c) => TEX_ESC[c]).replace(/[→←↔⇒⇔×≤≥≠∈∉∞·…≈¬∧∨∀∃✓−°√½π]/g, (c) => UNI[c]);
   function tex(s, mode) {
-    s = String(s == null ? '' : s);
+    s = clean(s).replace(/\n+/g, ' ');
     const blanks = [], maths = [];
     s = s.replace(/\[\[([\s\S]*?)\]\]/g, (_, a) => { blanks.push(a); return '\u0001B' + (blanks.length - 1) + '\u0001'; });
     s = s.replace(MATH_RE, (m) => { maths.push(m); return '\u0001M' + (maths.length - 1) + '\u0001'; });
@@ -1124,7 +1132,7 @@ Write blocks in reading order. Close every box_start with box_end and every cols
   }
   function texBlock(b) {
     switch (b.t) {
-      case 'section': return `\\section{${tex(b.title)}}\n`;
+      case 'section': return `\\section{${tex(String(b.title || '').replace(/^\s*(?:section\s+\d+[.):]?|\d+[.):])\s+/i, ''))}}\n`;
       case 'subsection': return `\\subsection*{${tex(b.title)}}\n`;
       case 'text': return `${tex(b.md || b.text || '')}\\par\\medskip\n`;
       case 'list': { const env = b.ordered ? 'enumerate' : 'itemize'; return `\\begin{${env}}\n${(b.items || []).map((i) => `  \\item ${tex(i)}`).join('\n')}\n\\end{${env}}\n`; }
