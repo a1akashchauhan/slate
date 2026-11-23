@@ -72,8 +72,15 @@ async function callGemini({ prompt, images, tier }) {
   // Free-tier models get overloaded at times, so try the next one on "busy" or "not found".
   const first = tier === 'complex' ? MODELS.gemini.complex : MODELS.gemini.default;
   const chain = [first, ...GEMINI_FALLBACKS.filter((m) => m !== first)];
-  let upstream = null, lastStatus = 502, reason = '', used = '';
-  for (const model of chain) {
+  let upstream = null, lastStatus = 502, reason = '', used = '', busy = null;
+  // One full pass over the models, then one more after a short pause if they were only busy.
+  const attempts = [...chain, ...chain];
+  for (let i = 0; i < attempts.length; i++) {
+    const model = attempts[i];
+    if (i === chain.length) {
+      if (!busy) break;
+      await new Promise((r) => setTimeout(r, 4000));
+    }
     upstream = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
       { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key }, body },
@@ -84,9 +91,13 @@ async function callGemini({ prompt, images, tier }) {
     lastStatus = upstream.status;
     try { const e = JSON.parse(detail).error || {}; reason = [model, e.status, e.message].filter(Boolean).join(': ').slice(0, 300); } catch { reason = model + ': ' + upstream.status; }
     upstream = null;
+    if (lastStatus === 503 || lastStatus === 500) busy = { status: lastStatus, reason };
     if (![429, 500, 503, 404].includes(lastStatus)) break; // auth or request errors won't be fixed by another model
   }
-  if (!upstream) return json(upstreamStatus(lastStatus), { error: 'The model could not be reached.', upstream: lastStatus, reason });
+  if (!upstream) {
+    if (lastStatus === 404 && busy) ({ status: lastStatus, reason } = busy); // report the busy model, not a missing fallback
+    return json(upstreamStatus(lastStatus), { error: 'The model could not be reached.', upstream: lastStatus, reason });
+  }
 
   const stream = new ReadableStream({
     async start(controller) {

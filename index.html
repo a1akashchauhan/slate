@@ -1024,7 +1024,7 @@ Write blocks in reading order. Close every box_start with box_end and every cols
       if (partial.length && err.code !== 'refused') { setCurrent(err.text, false); }
       else { current = prev; $('exampleTag').hidden = !prev.example; mount(prev.blocks); }
       if (err && err.code === 'cancelled') say(partial.length ? 'Stopped. Kept what was written so far.' : 'Stopped.');
-      else say(ERR[err && err.code] || ERR.upstream_error, true);
+      else say((err && err.msg) || ERR[err && err.code] || ERR.upstream_error, true);
       if (err && ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(err.code)) sample = null;
     } finally { setBusy(false); applyCopy(); $('revise').hidden = current.example || !sample; }
   }
@@ -1356,7 +1356,14 @@ ${teacher ? '\\teachertrue' : '\\teacherfalse'}
       } catch (e) { throw fail(e && e.name === 'AbortError' ? 'cancelled' : 'upstream_error'); }
       if (!res.ok) {
         const map = { 413: 'prompt_too_large', 429: 'rate_limited' };
-        throw fail(map[res.status] || 'upstream_error');
+        let info = {}; try { info = await res.json(); } catch (e) {}
+        const why = String(info.reason || '');
+        let msg = '';
+        if (res.status === 429 && !info.upstream && info.error) msg = info.error;
+        else if (info.upstream === 503 || /UNAVAILABLE|high demand|overloaded/i.test(why)) msg = 'Gemini’s free models are busy right now. Wait a minute and try again.';
+        else if (/RESOURCE_EXHAUSTED|quota/i.test(why) && /per.?day|PerDay|daily/i.test(why)) msg = 'Today’s free quota is used up. It resets at 1:30 PM India time (midnight Pacific).';
+        else if (/RESOURCE_EXHAUSTED|quota/i.test(why)) msg = 'Too much was sent in one minute for the free tier. Wait a minute, or try a shorter file or length.';
+        const err = fail(map[res.status] || 'upstream_error'); err.msg = msg; throw err;
       }
       const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
       try {
